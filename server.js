@@ -131,6 +131,7 @@ function parseDcInside(html, source) {
   const rowRegex = /<tr[^>]*class="[^"]*ub-content[^"]*"[\s\S]*?<\/tr>/gi;
   for (const [row] of html.matchAll(rowRegex)) {
     const subject = row.match(/<td[^>]*class="[^"]*gall_tit[^"]*"[\s\S]*?<\/td>/i)?.[0] || "";
+    if (/공지/.test(subject)) continue;
     const linkMatch = subject.match(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!/\/board\/view\/\?/.test(linkMatch?.[1] || "")) continue;
     const title = stripTags(linkMatch?.[2] || "");
