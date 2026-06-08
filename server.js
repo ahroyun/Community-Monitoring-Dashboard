@@ -136,7 +136,8 @@ function parseDcInside(html, source) {
     const title = stripTags(linkMatch?.[2] || "");
     if (!title || title === "설문" || title.length < 2) continue;
     const author = stripTags(row.match(/<td[^>]*class="[^"]*gall_writer[^"]*"[\s\S]*?<\/td>/i)?.[0] || "");
-    const date = stripTags(row.match(/<td[^>]*class="[^"]*gall_date[^"]*"[\s\S]*?<\/td>/i)?.[0] || "");
+    const dateTd = row.match(/<td[^>]*class="[^"]*gall_date[^"]*"([^>]*)>[\s\S]*?<\/td>/i);
+    const date = dateTd?.[1]?.match(/title="([^"]+)"/)?.[1] || stripTags(dateTd?.[0] || "");
     const views = stripTags(row.match(/<td[^>]*class="[^"]*gall_count[^"]*"[\s\S]*?<\/td>/i)?.[0] || "");
     posts.push(makePost(source, title, absolutize(linkMatch?.[1] || source.url, source.url), author, date, views));
   }
