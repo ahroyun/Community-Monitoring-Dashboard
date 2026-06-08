@@ -18,6 +18,7 @@ const els = {
   feed: document.querySelector("#feed"),
   notice: document.querySelector("#notice"),
   refreshButton: document.querySelector("#refreshButton"),
+  refreshTime: document.querySelector("#refreshTime"),
   clearFilters: document.querySelector("#clearFilters"),
   searchInput: document.querySelector("#searchInput"),
   onlyAlerts: document.querySelector("#onlyAlerts"),
@@ -42,6 +43,14 @@ function escapeHtml(value) {
     "\"": "&quot;",
     "'": "&#39;"
   })[char]);
+}
+
+function formatRefreshTime(value) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(new Date(value));
 }
 
 function allPosts() {
@@ -307,6 +316,7 @@ async function load() {
     const response = await fetch("/api/posts", { cache: "no-store" });
     if (!response.ok) throw new Error(`API ${response.status}`);
     state.data = await response.json();
+    els.refreshTime.textContent = `마지막 갱신 ${formatRefreshTime(state.data.generatedAt)}`;
     render();
   } catch (error) {
     els.notice.hidden = false;
