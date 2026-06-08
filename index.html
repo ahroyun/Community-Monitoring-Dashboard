@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LINE Games Community Radar</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Community Radar</p>
+          <h1>게임 커뮤니티 실시간 동향</h1>
+        </div>
+        <div class="actions">
+          <label class="search">
+            <span>검색</span>
+            <input id="searchInput" type="search" placeholder="키워드, 게임, 커뮤니티">
+          </label>
+          <button id="refreshButton" type="button" title="새로고침">
+            <span class="icon">↻</span>
+            새로고침
+          </button>
+        </div>
+      </header>
+
+      <section class="insight-strip" id="insightCards" aria-label="커뮤니티 인사이트"></section>
+
+      <section class="workspace">
+        <aside class="left-panel">
+          <div class="panel-head">
+            <h2>게임</h2>
+            <button id="clearFilters" type="button">전체</button>
+          </div>
+          <div id="gameFilters" class="filter-list"></div>
+
+          <h2>감지 키워드</h2>
+          <div id="keywordCloud" class="keyword-cloud"></div>
+
+          <h2>감성 신호</h2>
+          <p class="hint">제목 키워드 기반의 참고 신호입니다.</p>
+          <div class="sentiment-bars">
+            <div><span>긍정</span><meter id="positiveMeter" min="0" max="1" value="0"></meter></div>
+            <div><span>중립</span><meter id="neutralMeter" min="0" max="1" value="0"></meter></div>
+            <div><span>주의</span><meter id="negativeMeter" min="0" max="1" value="0"></meter></div>
+          </div>
+        </aside>
+
+        <section class="feed-area">
+          <div class="feed-toolbar">
+            <div class="tabs" id="sourceTabs"></div>
+            <label class="toggle">
+              <input id="onlyAlerts" type="checkbox">
+              <span>이슈 키워드만</span>
+            </label>
+          </div>
+          <div id="notice" class="notice" hidden></div>
+          <div id="feed" class="feed"></div>
+        </section>
+      </section>
+    </main>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
