@@ -113,6 +113,18 @@ button:hover {
   margin-right: 5px;
 }
 
+.refresh-box {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
+.refresh-time {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .insight-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
