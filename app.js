@@ -119,6 +119,13 @@ function filteredPosts() {
     const haystack = `${post.title} ${post.game} ${post.community} ${post.badges.join(" ")}`.toLowerCase();
     const matchesQuery = !query || haystack.includes(query);
     return matchesGame && matchesSource && matchesAlert && matchesKeyword && matchesQuery;
+  }).sort((a, b) => {
+    const da = parsePostDate(a);
+    const db = parsePostDate(b);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return db - da;
   });
 }
 
