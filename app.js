@@ -412,7 +412,7 @@ async function exportExcel() {
   els.exportButton.disabled = true;
   els.exportButton.textContent = "불러오는 중...";
   try {
-    if (!state.history) throw new Error("2주 누적 데이터가 없습니다. 페이지를 새로고침 후 다시 시도해주세요.");
+    state.history = await fetchJson("history.json");
     const posts = state.history.posts || [];
     if (!posts.length) throw new Error("내보낼 데이터가 없습니다.");
 
