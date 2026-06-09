@@ -120,9 +120,16 @@ function absolutize(url, base) {
   }
 }
 
+function hasNegationBefore(title, word) {
+  const idx = title.indexOf(word);
+  if (idx === -1) return false;
+  const before = title.slice(Math.max(0, idx - 8), idx);
+  return /없|아님|아니|안\s|못\s|아닌/.test(before);
+}
+
 function scoreSentiment(title) {
-  const positive = positiveWords.filter((word) => title.includes(word)).length;
-  const negative = negativeWords.filter((word) => title.includes(word)).length;
+  const positive = positiveWords.filter((w) => title.includes(w) && !hasNegationBefore(title, w)).length;
+  const negative = negativeWords.filter((w) => title.includes(w) && !hasNegationBefore(title, w)).length;
   if (negative > positive) return "negative";
   if (positive > negative) return "positive";
   return "neutral";
