@@ -12,6 +12,17 @@
   --good: #16803f;
   --shadow: 0 14px 38px rgba(28, 41, 56, 0.09);
   font-family: "Segoe UI", "Noto Sans KR", Arial, sans-serif;
+
+  /* 게임별 컬러 */
+  --game-uwo: #0369a1;
+  --game-uwo-bg: #e0f2fe;
+  --game-uwo-border: #7dd3fc;
+  --game-ud: #7c3aed;
+  --game-ud-bg: #ede9fe;
+  --game-ud-border: #c4b5fd;
+  --game-csgj: #c2410c;
+  --game-csgj-bg: #fff7ed;
+  --game-csgj-border: #fdba74;
 }
 
 * {
@@ -378,6 +389,21 @@ meter {
   font-size: 11px;
   font-weight: 900;
 }
+
+/* 게임별 칩 컬러 */
+.game-chip[data-game="대항해시대 오리진"] { background: var(--game-uwo-bg); color: var(--game-uwo); border-color: var(--game-uwo-border); }
+.game-chip[data-game="언디셈버"]           { background: var(--game-ud-bg);  color: var(--game-ud);  border-color: var(--game-ud-border); }
+.game-chip[data-game="창세기전 모바일"]    { background: var(--game-csgj-bg); color: var(--game-csgj); border-color: var(--game-csgj-border); }
+
+/* 게임별 포스트 왼쪽 테두리 */
+.post[data-game="대항해시대 오리진"] { border-left: 3px solid var(--game-uwo); }
+.post[data-game="언디셈버"]           { border-left: 3px solid var(--game-ud); }
+.post[data-game="창세기전 모바일"]    { border-left: 3px solid var(--game-csgj); }
+
+/* 게임 필터 버튼 active 컬러 */
+.filter[data-game="대항해시대 오리진"].active { border-color: var(--game-uwo); color: var(--game-uwo); }
+.filter[data-game="언디셈버"].active           { border-color: var(--game-ud);  color: var(--game-ud); }
+.filter[data-game="창세기전 모바일"].active    { border-color: var(--game-csgj); color: var(--game-csgj); }
 
 .post-flags {
   display: flex;
