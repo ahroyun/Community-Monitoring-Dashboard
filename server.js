@@ -52,6 +52,12 @@ const sources = [
   },
   {
     game: "창세기전 모바일",
+    community: "DC 창세기전 모바일",
+    type: "dcinside",
+    url: "https://gall.dcinside.com/mgallery/board/lists/?id=genesism"
+  },
+  {
+    game: "창세기전 모바일",
     community: "네이버 게임라운지 자유",
     type: "naverGame",
     loungeId: "theplayofgenesis",
