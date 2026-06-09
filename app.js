@@ -1,5 +1,11 @@
 const ALL = "전체";
 
+const GAME_COLORS = {
+  "대항해시대 오리진": "#0369a1",
+  "언디셈버": "#7c3aed",
+  "창세기전 모바일": "#c2410c"
+};
+
 const state = {
   data: null,
   game: ALL,
@@ -24,7 +30,10 @@ const els = {
   onlyAlerts: document.querySelector("#onlyAlerts"),
   positiveMeter: document.querySelector("#positiveMeter"),
   neutralMeter: document.querySelector("#neutralMeter"),
-  negativeMeter: document.querySelector("#negativeMeter")
+  negativeMeter: document.querySelector("#negativeMeter"),
+  positivePct: document.querySelector("#positivePct"),
+  neutralPct: document.querySelector("#neutralPct"),
+  negativePct: document.querySelector("#negativePct")
 };
 
 const sourceLabels = {
@@ -165,26 +174,35 @@ function renderInsights() {
   els.insightCards.innerHTML = [
     {
       label: "오늘 등록",
+      icon: "ti-calendar-stats",
+      color: "#0369a1",
       value: today.length.toLocaleString("ko-KR"),
       note: `${target} 기준 최신 흐름`
     },
     {
       label: "이슈 키워드",
+      icon: "ti-alert-triangle",
+      color: "#b7791f",
       value: alertPosts.length.toLocaleString("ko-KR"),
       note: topKeywordCount ? `${topKeyword} ${topKeywordCount}건이 가장 많음` : "감지된 키워드 없음"
     },
     {
       label: "주의 신호",
+      icon: "ti-mood-sad",
+      color: "#d64545",
       value: negative.length.toLocaleString("ko-KR"),
       note: "버그, 오류, 렉, 환불 등 제목 기반"
     },
     {
       label: "활성 커뮤니티",
+      icon: "ti-users",
+      color: "#0f766e",
       value: topCommunityCount.toLocaleString("ko-KR"),
       note: topCommunity
     }
   ].map((card) => `
-    <article>
+    <article style="border-top: 3px solid ${card.color}">
+      <i class="ti ${escapeHtml(card.icon)}" style="color:${card.color};font-size:18px;display:block;margin-bottom:6px" aria-hidden="true"></i>
       <span>${escapeHtml(card.label)}</span>
       <strong>${escapeHtml(card.value)}</strong>
       <p>${escapeHtml(card.note)}</p>
@@ -214,9 +232,15 @@ function renderSentiment() {
   const scoped = postsForSelectedGame();
   const sentiment = countBy(scoped, (post) => post.sentiment);
   const total = Math.max(1, scoped.length);
-  els.positiveMeter.value = (sentiment.positive || 0) / total;
-  els.neutralMeter.value = (sentiment.neutral || 0) / total;
-  els.negativeMeter.value = (sentiment.negative || 0) / total;
+  const pos = Math.round((sentiment.positive || 0) / total * 100);
+  const neu = Math.round((sentiment.neutral || 0) / total * 100);
+  const neg = Math.round((sentiment.negative || 0) / total * 100);
+  els.positiveMeter.style.width = pos + "%";
+  els.neutralMeter.style.width = neu + "%";
+  els.negativeMeter.style.width = neg + "%";
+  els.positivePct.textContent = pos + "%";
+  els.neutralPct.textContent = neu + "%";
+  els.negativePct.textContent = neg + "%";
 }
 
 function renderFilters() {
@@ -224,12 +248,16 @@ function renderFilters() {
   const games = [ALL, ...new Set(state.data.sources.map((source) => source.game))];
   const counts = countBy(posts, (post) => post.game);
 
-  els.gameFilters.innerHTML = games.map((game) => `
-    <button class="filter ${state.game === game ? "active" : ""}" type="button" data-game="${escapeHtml(game)}">
-      <span>${escapeHtml(game)}</span>
-      <small>${game === ALL ? posts.length : counts[game] || 0}</small>
-    </button>
-  `).join("");
+  els.gameFilters.innerHTML = games.map((game) => {
+    const color = GAME_COLORS[game];
+    const dot = color ? `<span class="filter-dot" style="background:${color}"></span>` : "";
+    return `
+      <button class="filter ${state.game === game ? "active" : ""}" type="button" data-game="${escapeHtml(game)}">
+        <span>${dot}${escapeHtml(game)}</span>
+        <small>${game === ALL ? posts.length : counts[game] || 0}</small>
+      </button>
+    `;
+  }).join("");
 
   els.gameFilters.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
