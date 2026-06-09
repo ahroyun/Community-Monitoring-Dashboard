@@ -440,6 +440,43 @@ button:hover {
   gap: 6px;
 }
 
+.hot-badge {
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #d64545;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.post-hot {
+  box-shadow: 0 0 0 2px #d64545;
+}
+
+.badge-hot {
+  background: #fae8e8;
+  color: #d64545;
+  outline: 1px solid #f5b8b8;
+}
+
+.hot-dot {
+  display: inline-block;
+  background: #d64545;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-radius: 999px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+.keyword-hot {
+  border-color: #f5b8b8;
+  background: #fae8e8;
+  color: #a32d2d;
+}
+
 .today-badge {
   border-radius: 999px;
   padding: 5px 9px;
