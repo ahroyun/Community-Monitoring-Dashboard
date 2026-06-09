@@ -355,7 +355,13 @@ function renderFeed() {
   }).join("");
 }
 
-const HEATMAP_KEYWORDS = ["버그", "오류", "렉", "점검", "환불", "과금", "너프", "접속", "결제", "상품", "보상", "업데이트", "쿠폰", "밸런스"];
+const HEATMAP_GROUPS = [
+  { label: "결제/환불", match: ["결제", "환불", "과금"] },
+  { label: "접속",      match: ["접속"] },
+  { label: "버그/오류", match: ["버그", "오류", "렉"] },
+  { label: "점검/업데이트", match: ["점검", "업데이트"] },
+  { label: "핵",        match: ["핵"] }
+];
 
 function renderHeatmap() {
   if (!state.data) return;
@@ -363,23 +369,21 @@ function renderHeatmap() {
   const posts = allPosts();
 
   const matrix = {};
-  for (const kw of HEATMAP_KEYWORDS) {
-    matrix[kw] = {};
-    for (const game of games) matrix[kw][game] = 0;
+  for (const grp of HEATMAP_GROUPS) {
+    matrix[grp.label] = {};
+    for (const game of games) matrix[grp.label][game] = 0;
   }
   for (const post of posts) {
     for (const badge of post.badges) {
-      if (matrix[badge] !== undefined) matrix[badge][post.game] = (matrix[badge][post.game] || 0) + 1;
+      for (const grp of HEATMAP_GROUPS) {
+        if (grp.match.includes(badge)) {
+          matrix[grp.label][post.game] = (matrix[grp.label][post.game] || 0) + 1;
+        }
+      }
     }
   }
 
-  const activeKws = HEATMAP_KEYWORDS.filter((kw) => games.some((g) => matrix[kw][g] > 0));
-  if (!activeKws.length) {
-    els.heatmapPanel.innerHTML = `<p class="hint" style="padding:8px 0">현재 수집된 키워드 데이터가 없습니다.</p>`;
-    return;
-  }
-
-  const maxVal = Math.max(1, ...activeKws.flatMap((kw) => games.map((g) => matrix[kw][g])));
+  const maxVal = Math.max(1, ...HEATMAP_GROUPS.flatMap((grp) => games.map((g) => matrix[grp.label][g])));
 
   function cellStyle(val) {
     if (val === 0) return `background:var(--panel);color:var(--muted)`;
@@ -390,13 +394,14 @@ function renderHeatmap() {
     return `background:#DC2626;color:#fff`;
   }
 
-  const head = `<tr><th></th>${games.map((g) => `<th>${escapeHtml(g)}</th>`).join("")}</tr>`;
-  const rows = activeKws.map((kw) => {
+  const colPct = Math.floor(80 / games.length);
+  const head = `<tr><th style="width:20%"></th>${games.map((g) => `<th style="width:${colPct}%">${escapeHtml(g)}</th>`).join("")}</tr>`;
+  const rows = HEATMAP_GROUPS.map((grp) => {
     const cells = games.map((g) => {
-      const val = matrix[kw][g];
+      const val = matrix[grp.label][g];
       return `<td style="${cellStyle(val)}">${val > 0 ? val : ""}</td>`;
     }).join("");
-    return `<tr><th>${escapeHtml(kw)}</th>${cells}</tr>`;
+    return `<tr><th>${escapeHtml(grp.label)}</th>${cells}</tr>`;
   }).join("");
 
   els.heatmapPanel.innerHTML = `<div class="heatmap-scroll"><table class="heatmap-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
