@@ -16,12 +16,6 @@ const sources = [
   },
   {
     game: "대항해시대 오리진",
-    community: "DC 대항해시대 오리진",
-    type: "dcinside",
-    url: "https://gall.dcinside.com/mgallery/board/lists/?id=bigtimeofnavigation"
-  },
-  {
-    game: "대항해시대 오리진",
     community: "네이버 카페 자유",
     type: "naverCafe",
     cafeId: 30210991,
@@ -39,6 +33,12 @@ const sources = [
     url: "https://cafe.naver.com/f-e/cafes/30210991/menus/38"
   },
   {
+    game: "대항해시대 오리진",
+    community: "DC 대항해시대 오리진",
+    type: "dcinside",
+    url: "https://gall.dcinside.com/mgallery/board/lists/?id=bigtimeofnavigation"
+  },
+  {
     game: "언디셈버",
     community: "FLOOR 자유게시판",
     type: "floor",
@@ -49,12 +49,6 @@ const sources = [
     community: "DC 언디셈버",
     type: "dcinside",
     url: "https://gall.dcinside.com/mgallery/board/lists/?id=undecember"
-  },
-  {
-    game: "창세기전 모바일",
-    community: "DC 창세기전 모바일",
-    type: "dcinside",
-    url: "https://gall.dcinside.com/mgallery/board/lists/?id=genesism"
   },
   {
     game: "창세기전 모바일",
@@ -79,6 +73,12 @@ const sources = [
     loungeId: "theplayofgenesis",
     boardId: 38,
     url: "https://game.naver.com/lounge/theplayofgenesis/board/38"
+  },
+  {
+    game: "창세기전 모바일",
+    community: "DC 창세기전 모바일",
+    type: "dcinside",
+    url: "https://gall.dcinside.com/mgallery/board/lists/?id=genesism"
   }
 ];
 
