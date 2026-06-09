@@ -348,7 +348,7 @@ async function load() {
   els.refreshButton.disabled = true;
   els.refreshButton.querySelector(".icon").textContent = "...";
   try {
-    const response = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
+    const response = await fetch(`https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main/data.json?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`API ${response.status}`);
     state.data = await response.json();
     els.refreshTime.textContent = `마지막 갱신 ${formatRefreshTime(state.data.generatedAt)}`;
