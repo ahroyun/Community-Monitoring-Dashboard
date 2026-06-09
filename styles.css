@@ -608,7 +608,7 @@ button:hover {
 }
 
 .heatmap-table tbody th {
-  text-align: left;
+  text-align: center;
   font-weight: 700;
   background: var(--panel);
   color: var(--ink);
