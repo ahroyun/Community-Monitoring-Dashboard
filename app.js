@@ -23,6 +23,8 @@ const els = {
   sourceTabs: document.querySelector("#sourceTabs"),
   feed: document.querySelector("#feed"),
   notice: document.querySelector("#notice"),
+  exportButton: document.querySelector("#exportButton"),
+  heatmapPanel: document.querySelector("#heatmapPanel"),
   refreshButton: document.querySelector("#refreshButton"),
   refreshTime: document.querySelector("#refreshTime"),
   clearFilters: document.querySelector("#clearFilters"),
@@ -353,12 +355,107 @@ function renderFeed() {
   }).join("");
 }
 
+const HEATMAP_KEYWORDS = ["버그", "오류", "렉", "점검", "환불", "과금", "너프", "접속", "결제", "상품", "보상", "업데이트", "쿠폰", "밸런스"];
+
+function renderHeatmap() {
+  if (!state.data) return;
+  const games = [...new Set(state.data.sources.map((s) => s.game))];
+  const posts = allPosts();
+
+  const matrix = {};
+  for (const kw of HEATMAP_KEYWORDS) {
+    matrix[kw] = {};
+    for (const game of games) matrix[kw][game] = 0;
+  }
+  for (const post of posts) {
+    for (const badge of post.badges) {
+      if (matrix[badge] !== undefined) matrix[badge][post.game] = (matrix[badge][post.game] || 0) + 1;
+    }
+  }
+
+  const activeKws = HEATMAP_KEYWORDS.filter((kw) => games.some((g) => matrix[kw][g] > 0));
+  if (!activeKws.length) {
+    els.heatmapPanel.innerHTML = `<p class="hint" style="padding:8px 0">현재 수집된 키워드 데이터가 없습니다.</p>`;
+    return;
+  }
+
+  const maxVal = Math.max(1, ...activeKws.flatMap((kw) => games.map((g) => matrix[kw][g])));
+
+  function cellStyle(val) {
+    if (val === 0) return `background:var(--panel);color:var(--muted)`;
+    const r = val / maxVal;
+    if (r < 0.25) return `background:#FEF3C7;color:#92400E`;
+    if (r < 0.5)  return `background:#FDE68A;color:#78350F`;
+    if (r < 0.75) return `background:#F59E0B;color:#451A03`;
+    return `background:#DC2626;color:#fff`;
+  }
+
+  const head = `<tr><th></th>${games.map((g) => `<th>${escapeHtml(g)}</th>`).join("")}</tr>`;
+  const rows = activeKws.map((kw) => {
+    const cells = games.map((g) => {
+      const val = matrix[kw][g];
+      return `<td style="${cellStyle(val)}">${val > 0 ? val : ""}</td>`;
+    }).join("");
+    return `<tr><th>${escapeHtml(kw)}</th>${cells}</tr>`;
+  }).join("");
+
+  els.heatmapPanel.innerHTML = `<div class="heatmap-scroll"><table class="heatmap-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+}
+
+async function exportExcel() {
+  els.exportButton.disabled = true;
+  els.exportButton.textContent = "불러오는 중...";
+  try {
+    const res = await fetch(`https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main/history.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("history.json을 불러오지 못했습니다. 첫 번째 Actions 실행 후 이용 가능합니다.");
+    const history = await res.json();
+    const posts = history.posts || [];
+    if (!posts.length) throw new Error("내보낼 데이터가 없습니다.");
+
+    if (!window.XLSX) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    const rows = posts.map((p) => ({
+      "게임": p.game,
+      "커뮤니티": p.community,
+      "제목": p.title,
+      "링크": p.url,
+      "작성자": p.author || "",
+      "작성일": p.date || "",
+      "조회수": p.views || "",
+      "감성": { positive: "긍정", neutral: "중립", negative: "주의" }[p.sentiment] || "",
+      "이슈키워드": p.badges.join(", "),
+      "수집일시": p.fetchedAt
+    }));
+
+    const ws = window.XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [16, 18, 50, 60, 14, 18, 8, 6, 20, 20].map((w) => ({ wch: w }));
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "커뮤니티 동향");
+    const today = new Date().toISOString().slice(0, 10);
+    window.XLSX.writeFile(wb, `커뮤니티동향_${today}.xlsx`);
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    els.exportButton.disabled = false;
+    els.exportButton.innerHTML = `<span class="icon">↓</span> 2주 내보내기`;
+  }
+}
+
 function render() {
   if (!state.data) return;
   renderInsights();
   renderFilters();
   renderKeywords();
   renderSentiment();
+  renderHeatmap();
   renderNotice();
   renderFeed();
 }
@@ -382,6 +479,7 @@ async function load() {
 }
 
 els.refreshButton.addEventListener("click", load);
+els.exportButton.addEventListener("click", exportExcel);
 els.clearFilters.addEventListener("click", () => {
   state.game = ALL;
   state.sourceType = ALL;
