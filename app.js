@@ -286,9 +286,9 @@ function renderFeed() {
   }
 
   els.feed.innerHTML = posts.map((post) => `
-    <article class="post ${temporalClass(post)}">
+    <article class="post ${temporalClass(post)}" data-game="${escapeHtml(post.game)}">
       <div class="post-top">
-        <span class="source"><span class="game-chip">${escapeHtml(post.game)}</span><span>${escapeHtml(post.community)}</span></span>
+        <span class="source"><span class="game-chip" data-game="${escapeHtml(post.game)}">${escapeHtml(post.game)}</span><span>${escapeHtml(post.community)}</span></span>
         <div class="post-flags">
           ${isTodayPost(post) ? `<span class="today-badge">오늘 등록</span>` : ""}
           ${isThisWeekPost(post) ? `<span class="week-badge">금주</span>` : ""}
