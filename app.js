@@ -355,4 +355,4 @@ els.onlyAlerts.addEventListener("change", (event) => {
 });
 
 load();
-state.timer = window.setInterval(load, 300_000);
+state.timer = window.setInterval(load, 60_000);
