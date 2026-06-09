@@ -464,12 +464,11 @@ function render() {
   renderFeed();
 }
 
-const API_BASE = `https://api.github.com/repos/ahroyun/Community-Monitoring-Dashboard/contents`;
-const API_HEADERS = { Accept: "application/vnd.github.raw+json" };
+const RAW_BASE = `https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main`;
 
 async function fetchJson(path) {
-  const res = await fetch(`${API_BASE}/${path}`, { headers: API_HEADERS, cache: "no-store" });
-  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  const res = await fetch(`${RAW_BASE}/${path}?t=${Date.now()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`fetch ${res.status}`);
   return res.json();
 }
 
@@ -478,7 +477,7 @@ async function load(isAuto = false) {
   els.refreshButton.querySelector(".icon").textContent = "...";
   try {
     state.data = await fetchJson("data.json");
-    // history.json은 최초 로드 또는 수동 새로고침 시에만 가져옴 (용량 절약)
+    // history.json은 최초 로드 또는 수동 새로고침 시에만 가져옴
     if (!isAuto || !state.history) {
       state.history = await fetchJson("history.json").catch(() => null);
     }
