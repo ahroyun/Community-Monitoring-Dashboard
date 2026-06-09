@@ -8,6 +8,7 @@ const GAME_COLORS = {
 
 const state = {
   data: null,
+  history: null,
   game: ALL,
   sourceType: ALL,
   query: "",
@@ -366,7 +367,7 @@ const HEATMAP_GROUPS = [
 function renderHeatmap() {
   if (!state.data) return;
   const games = [...new Set(state.data.sources.map((s) => s.game))];
-  const posts = allPosts();
+  const posts = state.history ? state.history.posts || [] : allPosts();
 
   const matrix = {};
   for (const grp of HEATMAP_GROUPS) {
@@ -469,9 +470,15 @@ async function load() {
   els.refreshButton.disabled = true;
   els.refreshButton.querySelector(".icon").textContent = "...";
   try {
-    const response = await fetch(`https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main/data.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`API ${response.status}`);
-    state.data = await response.json();
+    const base = `https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main`;
+    const t = Date.now();
+    const [dataRes, histRes] = await Promise.all([
+      fetch(`${base}/data.json?t=${t}`, { cache: "no-store" }),
+      fetch(`${base}/history.json?t=${t}`, { cache: "no-store" })
+    ]);
+    if (!dataRes.ok) throw new Error(`API ${dataRes.status}`);
+    state.data = await dataRes.json();
+    state.history = histRes.ok ? await histRes.json() : null;
     els.refreshTime.textContent = `마지막 갱신 ${formatRefreshTime(state.data.generatedAt)}`;
     render();
   } catch (error) {
