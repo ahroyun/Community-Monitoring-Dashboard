@@ -150,6 +150,19 @@ function topEntry(map) {
   return Object.entries(map).sort((a, b) => b[1] - a[1])[0] || ["-", 0];
 }
 
+function getHotKeywords(posts) {
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const recentPosts = posts.filter((post) => {
+    const d = parsePostDate(post);
+    return d && d >= threeHoursAgo;
+  });
+  const counts = {};
+  for (const post of recentPosts) {
+    for (const badge of post.badges) counts[badge] = (counts[badge] || 0) + 1;
+  }
+  return new Set(Object.entries(counts).filter(([, c]) => c >= 3).map(([k]) => k));
+}
+
 function keywordEntries(posts) {
   const counts = {};
   for (const post of posts) {
@@ -212,10 +225,11 @@ function renderInsights() {
 
 function renderKeywords() {
   const entries = keywordEntries(postsForSelectedGame()).slice(0, 14);
+  const hot = getHotKeywords(allPosts());
   els.keywordCloud.innerHTML = entries.length
     ? entries.map(([word, count]) => `
-      <button class="keyword ${state.keyword === word ? "active" : ""}" type="button" data-keyword="${escapeHtml(word)}">
-        ${escapeHtml(word)} ${count}
+      <button class="keyword ${state.keyword === word ? "active" : ""} ${hot.has(word) ? "keyword-hot" : ""}" type="button" data-keyword="${escapeHtml(word)}">
+        ${hot.has(word) ? `<span class="hot-dot">HOT</span>` : ""}${escapeHtml(word)} ${count}
       </button>
     `).join("")
     : `<span class="empty small">감지된 이슈 키워드가 없습니다.</span>`;
@@ -313,25 +327,30 @@ function renderFeed() {
     return;
   }
 
-  els.feed.innerHTML = posts.map((post) => `
-    <article class="post ${temporalClass(post)}" data-game="${escapeHtml(post.game)}">
+  const hot = getHotKeywords(allPosts());
+  els.feed.innerHTML = posts.map((post) => {
+    const isHot = post.badges.some((b) => hot.has(b));
+    return `
+    <article class="post ${temporalClass(post)}${isHot ? " post-hot" : ""}" data-game="${escapeHtml(post.game)}">
       <div class="post-top">
         <span class="source"><span class="game-chip" data-game="${escapeHtml(post.game)}">${escapeHtml(post.game)}</span><span>${escapeHtml(post.community)}</span></span>
         <div class="post-flags">
+          ${isHot ? `<span class="hot-badge">🔥 HOT</span>` : ""}
           ${isTodayPost(post) ? `<span class="today-badge">오늘 등록</span>` : ""}
           ${isThisWeekPost(post) ? `<span class="week-badge">금주</span>` : ""}
           <span class="sentiment ${post.sentiment}">${sentimentLabel(post.sentiment)}</span>
         </div>
       </div>
       <a href="${escapeHtml(post.url)}" target="_blank" rel="noreferrer">${escapeHtml(post.title)}</a>
-      ${post.badges.length ? `<div class="badges">${post.badges.map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
+      ${post.badges.length ? `<div class="badges">${post.badges.map((badge) => `<span class="badge${hot.has(badge) ? " badge-hot" : ""}">${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
       <div class="meta">
         ${post.author ? `<span>${escapeHtml(post.author)}</span>` : ""}
         ${post.date ? `<span>등록 ${escapeHtml(post.date)}</span>` : ""}
         ${post.views ? `<span>조회 ${escapeHtml(post.views)}</span>` : ""}
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function render() {
