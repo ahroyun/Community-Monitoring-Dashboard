@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { writeFile, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -347,3 +347,26 @@ const data = {
 const outPath = join(__dirname, "../data.json");
 await writeFile(outPath, JSON.stringify(data));
 console.log(`✓ ${data.summary.totalPosts}개 게시글 저장 완료 (${new Date().toLocaleTimeString("ko-KR")})`);
+
+// history.json 누적 저장 (14일치 유지)
+const historyPath = join(__dirname, "../history.json");
+let existing = [];
+try {
+  const raw = await readFile(historyPath, "utf-8");
+  existing = JSON.parse(raw).posts || [];
+} catch {
+  // 파일 없으면 빈 배열로 시작
+}
+
+const newPosts = results.flatMap((r) => r.posts);
+const existingIds = new Set(existing.map((p) => p.id));
+const merged = [
+  ...existing,
+  ...newPosts.filter((p) => !existingIds.has(p.id))
+];
+
+const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+const trimmed = merged.filter((p) => (p.fetchedAt || "") >= cutoff);
+
+await writeFile(historyPath, JSON.stringify({ updatedAt: new Date().toISOString(), posts: trimmed }));
+console.log(`✓ history.json: 총 ${trimmed.length}개 (신규 ${newPosts.filter((p) => !existingIds.has(p.id)).length}개 추가)`);
