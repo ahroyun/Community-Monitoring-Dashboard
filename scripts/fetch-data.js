@@ -348,7 +348,7 @@ const outPath = join(__dirname, "../data.json");
 await writeFile(outPath, JSON.stringify(data));
 console.log(`✓ ${data.summary.totalPosts}개 게시글 저장 완료 (${new Date().toLocaleTimeString("ko-KR")})`);
 
-// history.json 누적 저장 (7일치 유지)
+// history.json 누적 저장 (14일치 유지)
 const historyPath = join(__dirname, "../history.json");
 let existing = [];
 try {
@@ -365,7 +365,7 @@ const merged = [
   ...newPosts.filter((p) => !existingIds.has(p.id))
 ];
 
-const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 const trimmed = merged.filter((p) => (p.fetchedAt || "") >= cutoff);
 
 await writeFile(historyPath, JSON.stringify({ updatedAt: new Date().toISOString(), posts: trimmed }));
