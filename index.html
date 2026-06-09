@@ -20,6 +20,10 @@
             <input id="searchInput" type="search" placeholder="키워드, 게임, 커뮤니티">
           </label>
           <div class="refresh-box">
+            <button id="exportButton" type="button" title="2주 데이터 엑셀 내보내기">
+              <span class="icon">↓</span>
+              2주 내보내기
+            </button>
             <button id="refreshButton" type="button" title="새로고침">
               <span class="icon">↻</span>
               새로고침
@@ -30,6 +34,16 @@
       </header>
 
       <section class="insight-strip" id="insightCards" aria-label="커뮤니티 인사이트"></section>
+
+      <section class="heatmap-section">
+        <div class="heatmap-head">
+          <div>
+            <h2 style="margin-top:0">키워드 히트맵</h2>
+            <p class="hint">게임별 이슈 키워드 집중도 (현재 수집 데이터 기준)</p>
+          </div>
+        </div>
+        <div id="heatmapPanel"></div>
+      </section>
 
       <section class="workspace">
         <aside class="left-panel">
