@@ -412,10 +412,8 @@ async function exportExcel() {
   els.exportButton.disabled = true;
   els.exportButton.textContent = "불러오는 중...";
   try {
-    const res = await fetch(`https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main/history.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("history.json을 불러오지 못했습니다. 첫 번째 Actions 실행 후 이용 가능합니다.");
-    const history = await res.json();
-    const posts = history.posts || [];
+    if (!state.history) throw new Error("2주 누적 데이터가 없습니다. 페이지를 새로고침 후 다시 시도해주세요.");
+    const posts = state.history.posts || [];
     if (!posts.length) throw new Error("내보낼 데이터가 없습니다.");
 
     if (!window.XLSX) {
@@ -466,19 +464,25 @@ function render() {
   renderFeed();
 }
 
-async function load() {
+const API_BASE = `https://api.github.com/repos/ahroyun/Community-Monitoring-Dashboard/contents`;
+const API_HEADERS = { Accept: "application/vnd.github.raw+json" };
+
+async function fetchJson(path) {
+  const res = await fetch(`${API_BASE}/${path}`, { headers: API_HEADERS, cache: "no-store" });
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  return res.json();
+}
+
+async function load(isAuto = false) {
   els.refreshButton.disabled = true;
   els.refreshButton.querySelector(".icon").textContent = "...";
   try {
-    const base = `https://raw.githubusercontent.com/ahroyun/Community-Monitoring-Dashboard/main`;
-    const t = Date.now();
-    const [dataRes, histRes] = await Promise.all([
-      fetch(`${base}/data.json?t=${t}`, { cache: "no-store" }),
-      fetch(`${base}/history.json?t=${t}`, { cache: "no-store" })
-    ]);
-    if (!dataRes.ok) throw new Error(`API ${dataRes.status}`);
-    state.data = await dataRes.json();
-    state.history = histRes.ok ? await histRes.json() : null;
+    state.data = await fetchJson("data.json");
+    // history.json은 최초 로드 또는 수동 새로고침 시에만 가져옴 (용량 절약)
+    if (!isAuto || !state.history) {
+      state.history = await fetchJson("history.json").catch(() => null);
+    }
+    els.notice.hidden = true;
     els.refreshTime.textContent = `마지막 갱신 ${formatRefreshTime(state.data.generatedAt)}`;
     render();
   } catch (error) {
@@ -512,4 +516,4 @@ els.onlyAlerts.addEventListener("change", (event) => {
 });
 
 load();
-state.timer = window.setInterval(load, 60_000);
+state.timer = window.setInterval(() => load(true), 60_000);
