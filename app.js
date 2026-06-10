@@ -323,6 +323,18 @@ function renderNotice() {
   els.notice.textContent = `${blocked.length}개 소스는 현재 게시글을 가져오지 못했습니다. 메모형 메뉴나 접근 제한이 있는 소스는 확인 필요로 남깁니다.`;
 }
 
+const COMMUNITY_PLATFORMS = ["네이버 카페", "FLOOR", "게임라운지", "DC"];
+const ALERT_TITLE_WORDS = ["결제", "환불", "접속", "버그", "오류", "상품"];
+
+function parseCommunity(community) {
+  for (const p of COMMUNITY_PLATFORMS) {
+    if (community.startsWith(p)) {
+      return { platform: p, sub: community.slice(p.length).trim() };
+    }
+  }
+  return { platform: community, sub: "" };
+}
+
 function renderFeed() {
   const posts = filteredPosts();
   if (!posts.length) {
@@ -333,10 +345,16 @@ function renderFeed() {
   const hot = getHotKeywords(allPosts());
   els.feed.innerHTML = posts.map((post) => {
     const isHot = post.badges.some((b) => hot.has(b));
+    const { platform, sub } = parseCommunity(post.community);
+    const isAlertTitle = ALERT_TITLE_WORDS.some((w) => post.title.includes(w));
     return `
     <article class="post ${temporalClass(post)}${isHot ? " post-hot" : ""}" data-game="${escapeHtml(post.game)}">
       <div class="post-top">
-        <span class="source"><span class="game-chip" data-game="${escapeHtml(post.game)}">${escapeHtml(post.game)}</span><span>${escapeHtml(post.community)}</span></span>
+        <span class="source">
+          <span class="game-chip" data-game="${escapeHtml(post.game)}">${escapeHtml(post.game)}</span>
+          <span class="community-chip">${escapeHtml(platform)}</span>
+          ${sub ? `<span class="community-sub">${escapeHtml(sub)}</span>` : ""}
+        </span>
         <div class="post-flags">
           ${isHot ? `<span class="hot-badge">🔥 HOT</span>` : ""}
           ${isTodayPost(post) ? `<span class="today-badge">오늘 등록</span>` : ""}
@@ -344,7 +362,7 @@ function renderFeed() {
           <span class="sentiment ${post.sentiment}">${sentimentLabel(post.sentiment)}</span>
         </div>
       </div>
-      <a href="${escapeHtml(post.url)}" target="_blank" rel="noreferrer">${escapeHtml(post.title)}</a>
+      <a href="${escapeHtml(post.url)}" target="_blank" rel="noreferrer" class="${isAlertTitle ? "alert-title" : ""}">${escapeHtml(post.title)}</a>
       ${post.badges.length ? `<div class="badges">${post.badges.map((badge) => `<span class="badge${hot.has(badge) ? " badge-hot" : ""}">${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
       <div class="meta">
         ${post.author ? `<span>${escapeHtml(post.author)}</span>` : ""}
