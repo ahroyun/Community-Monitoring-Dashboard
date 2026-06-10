@@ -93,6 +93,17 @@ function parsePostDate(post) {
   if (match) return new Date(base.getTime() - Number(match[1]) * 24 * 60 * 60_000);
   if (/방금/.test(date)) return base;
 
+  // 네이버 카페 형식: '2026. 06. 08. PM 02:16' or 'AM 11:05'
+  match = date.match(/(20\d{2})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(AM|PM)\s+(\d{1,2}):(\d{2})/i);
+  if (match) {
+    let h = Number(match[5]);
+    const pm = match[4].toUpperCase() === "PM";
+    if (pm && h !== 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), h, Number(match[6]));
+  }
+
+  // 일반 날짜 형식: '2026-06-10 11:35' or '2026-06-10 11:35:22'
   match = date.match(/(20\d{2})[-.]\s*(\d{1,2})[-.]\s*(\d{1,2})(?:\D+(\d{1,2}):(\d{1,2}))?/);
   if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4] || 0), Number(match[5] || 0));
 
