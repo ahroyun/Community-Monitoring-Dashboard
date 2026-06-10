@@ -73,6 +73,13 @@ function postsForSelectedGame() {
   return allPosts().filter((post) => state.game === ALL || post.game === state.game);
 }
 
+function formatPostDate(post) {
+  const d = parsePostDate(post);
+  if (!d || isNaN(d)) return post.date || "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function parsePostDate(post) {
   const date = String(post.date || "");
   if (!date) return null;
@@ -366,7 +373,7 @@ function renderFeed() {
       ${post.badges.length ? `<div class="badges">${post.badges.map((badge) => `<span class="badge${hot.has(badge) ? " badge-hot" : ""}">${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
       <div class="meta">
         ${post.author ? `<span>${escapeHtml(post.author)}</span>` : ""}
-        ${post.date ? `<span>등록 ${escapeHtml(post.date)}</span>` : ""}
+        ${post.date ? `<span>등록 ${escapeHtml(formatPostDate(post))}</span>` : ""}
         ${post.views ? `<span>조회 ${escapeHtml(post.views)}</span>` : ""}
       </div>
     </article>
