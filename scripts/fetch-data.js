@@ -22,7 +22,7 @@ const sources = [
   },
   {
     game: "대항해시대 오리진",
-    community: "네이버 카페 공략",
+    community: "네이버 카페 건의",
     type: "naverCafe",
     cafeId: 30210991,
     cafeUrl: "uworigin",
@@ -57,7 +57,7 @@ const sources = [
   },
   {
     game: "창세기전 모바일",
-    community: "네이버 게임라운지 공략",
+    community: "네이버 게임라운지 건의사항",
     type: "naverGame",
     loungeId: "theplayofgenesis",
     boardId: 21,
@@ -65,7 +65,7 @@ const sources = [
   },
   {
     game: "창세기전 모바일",
-    community: "네이버 게임라운지 건의",
+    community: "네이버 게임라운지 오류제보",
     type: "naverGame",
     loungeId: "theplayofgenesis",
     boardId: 38,
