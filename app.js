@@ -2,8 +2,8 @@ const ALL = "전체";
 
 const GAME_COLORS = {
   "대항해시대 오리진": "#0369a1",
-  "언디셈버": "#7c3aed",
-  "창세기전 모바일": "#c2410c"
+  "언디셈버": "#c2410c",
+  "창세기전 모바일": "#7c3aed"
 };
 
 const state = {
@@ -353,7 +353,7 @@ function renderFeed() {
         <span class="source">
           <span class="game-chip" data-game="${escapeHtml(post.game)}">${escapeHtml(post.game)}</span>
           <span class="community-chip" data-platform="${escapeHtml(platform)}">${escapeHtml(platform)}</span>
-          ${sub ? `<span class="community-sub">${escapeHtml(sub)}</span>` : ""}
+          ${sub && platform !== "DC" ? `<span class="community-sub">${escapeHtml(sub)}</span>` : ""}
         </span>
         <div class="post-flags">
           ${isHot ? `<span class="hot-badge">🔥 HOT</span>` : ""}
