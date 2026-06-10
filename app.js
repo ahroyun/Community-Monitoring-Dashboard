@@ -172,13 +172,16 @@ function topEntry(map) {
 }
 
 function getHotKeywords(posts) {
-  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  const recentPosts = posts.filter((post) => {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayPosts = posts.filter((post) => {
     const d = parsePostDate(post);
-    return d && d >= threeHoursAgo;
+    if (!d) return false;
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return ds === todayStr;
   });
   const counts = {};
-  for (const post of recentPosts) {
+  for (const post of todayPosts) {
     for (const badge of post.badges) counts[badge] = (counts[badge] || 0) + 1;
   }
   return new Set(Object.entries(counts).filter(([, c]) => c >= 3).map(([k]) => k));
