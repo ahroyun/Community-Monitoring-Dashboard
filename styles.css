@@ -420,14 +420,18 @@ button:hover {
 }
 
 .community-chip {
-  border: 1px solid var(--line);
   border-radius: 999px;
   padding: 3px 7px;
-  background: #f0f4f8;
-  color: #4a5568;
   font-size: 11px;
   font-weight: 700;
+  border: 1px solid transparent;
 }
+
+/* 플랫폼별 컬러 */
+.community-chip[data-platform="FLOOR"]         { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.community-chip[data-platform="네이버 카페"]    { background: #dcfce7; color: #166534; border-color: #86efac; }
+.community-chip[data-platform="네이버 게임라운지"] { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.community-chip[data-platform="DC"]            { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
 
 .community-sub {
   color: var(--muted);
@@ -643,38 +647,36 @@ button:hover {
   min-width: 60px;
 }
 
-/* ── Source memo footer ──────────────────────────── */
+/* ── Source memo (left panel) ────────────────────── */
 .source-memo {
-  margin-top: 24px;
-  color: var(--muted);
+  margin-top: 18px;
   font-size: 11px;
+  color: var(--muted);
 }
 
-.source-memo details summary {
+.source-memo summary {
   cursor: pointer;
   list-style: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  opacity: 0.5;
+  gap: 4px;
+  opacity: 0.55;
   user-select: none;
+  font-weight: 700;
 }
 
-.source-memo details summary::-webkit-details-marker { display: none; }
-
-.source-memo details summary::before {
-  content: "▸";
-  font-size: 10px;
-}
-
-.source-memo details[open] summary::before { content: "▾"; }
-
-.source-memo details[open] { opacity: 0.7; }
+.source-memo summary::-webkit-details-marker { display: none; }
+.source-memo summary::before { content: "▸"; font-size: 9px; }
+.source-memo[open] summary::before { content: "▾"; }
 
 .source-memo ul {
-  margin: 6px 0 0;
-  padding-left: 16px;
-  line-height: 1.8;
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  line-height: 1.6;
+  opacity: 0.75;
 }
 
 @media (max-width: 980px) {
