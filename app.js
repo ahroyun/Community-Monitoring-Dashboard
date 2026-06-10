@@ -180,11 +180,20 @@ function getHotKeywords(posts) {
     const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     return ds === todayStr;
   });
-  const counts = {};
+  // 게임별로 키워드 카운트
+  const gameCounts = {};
   for (const post of todayPosts) {
-    for (const badge of post.badges) counts[badge] = (counts[badge] || 0) + 1;
+    if (!gameCounts[post.game]) gameCounts[post.game] = {};
+    for (const badge of post.badges) {
+      gameCounts[post.game][badge] = (gameCounts[post.game][badge] || 0) + 1;
+    }
   }
-  return new Set(Object.entries(counts).filter(([, c]) => c >= 3).map(([k]) => k));
+  // 게임별 HOT 키워드 Map 반환
+  const result = new Map();
+  for (const [game, counts] of Object.entries(gameCounts)) {
+    result.set(game, new Set(Object.entries(counts).filter(([, c]) => c >= 3).map(([k]) => k)));
+  }
+  return result;
 }
 
 function keywordEntries(posts) {
@@ -250,10 +259,11 @@ function renderInsights() {
 function renderKeywords() {
   const entries = keywordEntries(postsForSelectedGame()).slice(0, 14);
   const hot = getHotKeywords(allPosts());
+  const isHotKeyword = (word) => state.game !== ALL ? hot.get(state.game)?.has(word) : [...hot.values()].some((s) => s.has(word));
   els.keywordCloud.innerHTML = entries.length
     ? entries.map(([word, count]) => `
-      <button class="keyword ${state.keyword === word ? "active" : ""} ${hot.has(word) ? "keyword-hot" : ""}" type="button" data-keyword="${escapeHtml(word)}">
-        ${hot.has(word) ? `<span class="hot-dot">HOT</span>` : ""}${escapeHtml(word)} ${count}
+      <button class="keyword ${state.keyword === word ? "active" : ""} ${isHotKeyword(word) ? "keyword-hot" : ""}" type="button" data-keyword="${escapeHtml(word)}">
+        ${isHotKeyword(word) ? `<span class="hot-dot">HOT</span>` : ""}${escapeHtml(word)} ${count}
       </button>
     `).join("")
     : `<span class="empty small">감지된 이슈 키워드가 없습니다.</span>`;
@@ -365,7 +375,8 @@ function renderFeed() {
 
   const hot = getHotKeywords(allPosts());
   els.feed.innerHTML = posts.map((post) => {
-    const isHot = post.badges.some((b) => hot.has(b));
+    const gameHot = hot.get(post.game) || new Set();
+    const isHot = post.badges.some((b) => gameHot.has(b));
     const { platform, sub } = parseCommunity(post.community);
     const isAlertTitle = ALERT_TITLE_WORDS.some((w) => post.title.includes(w));
     return `
@@ -384,7 +395,7 @@ function renderFeed() {
         </div>
       </div>
       <a href="${escapeHtml(post.url)}" target="_blank" rel="noreferrer" class="${isAlertTitle ? "alert-title" : ""}">${escapeHtml(post.title)}</a>
-      ${post.badges.length ? `<div class="badges">${post.badges.map((badge) => `<span class="badge${hot.has(badge) ? " badge-hot" : ""}">${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
+      ${post.badges.length ? `<div class="badges">${post.badges.map((badge) => `<span class="badge${gameHot.has(badge) ? " badge-hot" : ""}">${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
       <div class="meta">
         ${post.author ? `<span>${escapeHtml(post.author)}</span>` : ""}
         ${post.date ? `<span>등록 ${escapeHtml(formatPostDate(post))}</span>` : ""}
