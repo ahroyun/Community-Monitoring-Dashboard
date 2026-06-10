@@ -323,7 +323,7 @@ function renderNotice() {
   els.notice.textContent = `${blocked.length}개 소스는 현재 게시글을 가져오지 못했습니다. 메모형 메뉴나 접근 제한이 있는 소스는 확인 필요로 남깁니다.`;
 }
 
-const COMMUNITY_PLATFORMS = ["네이버 카페", "FLOOR", "게임라운지", "DC"];
+const COMMUNITY_PLATFORMS = ["네이버 게임라운지", "네이버 카페", "FLOOR", "DC"];
 const ALERT_TITLE_WORDS = ["결제", "환불", "접속", "버그", "오류", "상품"];
 
 function parseCommunity(community) {
@@ -352,7 +352,7 @@ function renderFeed() {
       <div class="post-top">
         <span class="source">
           <span class="game-chip" data-game="${escapeHtml(post.game)}">${escapeHtml(post.game)}</span>
-          <span class="community-chip">${escapeHtml(platform)}</span>
+          <span class="community-chip" data-platform="${escapeHtml(platform)}">${escapeHtml(platform)}</span>
           ${sub ? `<span class="community-sub">${escapeHtml(sub)}</span>` : ""}
         </span>
         <div class="post-flags">
