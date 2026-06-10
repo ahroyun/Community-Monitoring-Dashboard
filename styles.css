@@ -17,12 +17,12 @@
   --game-uwo: #0369a1;
   --game-uwo-bg: #e0f2fe;
   --game-uwo-border: #7dd3fc;
-  --game-ud: #7c3aed;
-  --game-ud-bg: #ede9fe;
-  --game-ud-border: #c4b5fd;
-  --game-csgj: #c2410c;
-  --game-csgj-bg: #fff7ed;
-  --game-csgj-border: #fdba74;
+  --game-ud: #c2410c;
+  --game-ud-bg: #fff7ed;
+  --game-ud-border: #fdba74;
+  --game-csgj: #7c3aed;
+  --game-csgj-bg: #ede9fe;
+  --game-csgj-border: #c4b5fd;
 }
 
 * {
@@ -428,7 +428,7 @@ button:hover {
 }
 
 /* 플랫폼별 컬러 */
-.community-chip[data-platform="FLOOR"]         { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.community-chip[data-platform="FLOOR"]         { background: #cffafe; color: #155e75; border-color: #67e8f9; }
 .community-chip[data-platform="네이버 카페"]    { background: #dcfce7; color: #166534; border-color: #86efac; }
 .community-chip[data-platform="네이버 게임라운지"] { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
 .community-chip[data-platform="DC"]            { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
