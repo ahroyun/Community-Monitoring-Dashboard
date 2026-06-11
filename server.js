@@ -146,6 +146,8 @@ function parseDcInside(html, source) {
     if (/class="[^"]*notice[^"]*"/i.test(row.match(/<tr[^>]*>/)?.[0] || "")) continue;
     const numTd = row.match(/<td[^>]*class="[^"]*gall_num[^"]*"[\s\S]*?<\/td>/i)?.[0] || "";
     if (/공지|설문/.test(stripTags(numTd))) continue;
+    const subjectTd = row.match(/<td[^>]*class="[^"]*gall_subject[^"]*"[\s\S]*?<\/td>/i)?.[0] || "";
+    if (/공지|설문/.test(stripTags(subjectTd))) continue;
     const subject = row.match(/<td[^>]*class="[^"]*gall_tit[^"]*"[\s\S]*?<\/td>/i)?.[0] || "";
     if (/공지/.test(subject)) continue;
     const linkMatch = subject.match(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
