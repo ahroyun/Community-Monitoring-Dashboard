@@ -24,12 +24,15 @@ async function getAvailableModels() {
 }
 
 // 우선순위 모델 목록 (실제 사용 가능한 것만 필터링됨)
+// gemini-2.0-flash / gemini-2.0-flash-lite 는 이 프로젝트에서 limit:0 → 제외
 const PREFERRED_MODELS = [
   "gemini-2.5-flash",
-  "gemini-2.5-flash-preview-05-20",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-2.0-flash-exp",
+  "gemini-2.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-3.5-flash",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
 ];
 
 const availableModels = await getAvailableModels();
