@@ -202,6 +202,7 @@ for (const game of GAMES) {
 const summary = {
   generatedAt: new Date().toISOString(),
   kstDate: kstTodayStr,
+  kstYesterday: kstYesterdayStr,
   daily: dailyResult,
   weekly: weeklyResult
 };
