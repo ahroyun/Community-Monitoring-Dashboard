@@ -11,21 +11,40 @@ if (!GEMINI_API_KEY) {
   process.exit(1);
 }
 
+// 사용 가능한 모델 순서대로 시도
+const GEMINI_MODELS = [
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+];
+
 async function callGemini(prompt) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
-      })
+  let lastErr;
+  for (const model of GEMINI_MODELS) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+        })
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log(`  → 모델 사용: ${model}`);
+      return text;
     }
-  );
-  if (!res.ok) throw new Error(`Gemini API ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const errText = await res.text();
+    console.warn(`  [${model}] 실패 (${res.status}): ${errText.slice(0, 200)}`);
+    lastErr = new Error(`Gemini API ${res.status} (${model}): ${errText}`);
+    // 404(모델 없음)는 다음 모델 시도, 그 외는 즉시 throw
+    if (res.status !== 404 && res.status !== 400) throw lastErr;
+  }
+  throw lastErr;
 }
 
 function buildPrompt(game, posts, period) {
