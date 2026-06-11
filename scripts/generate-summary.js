@@ -62,9 +62,22 @@ async function callGemini(prompt) {
     const errText = await res.text();
     console.warn(`  [${model}] 실패 (${res.status}): ${errText.slice(0, 200)}`);
     lastErr = new Error(`Gemini API ${res.status} (${model}): ${errText}`);
-    // 다음 모델 시도: 404(없는 모델), 429(할당량 초과), 400(잘못된 요청)
-    // 그 외(401 인증오류 등)는 즉시 throw
-    if (res.status !== 404 && res.status !== 429 && res.status !== 400) throw lastErr;
+    if (res.status === 503) {
+      // 일시적 과부하 — 같은 모델 10초 후 1회 재시도
+      console.warn(`  [${model}] 10초 후 재시도...`);
+      await new Promise((r) => setTimeout(r, 10000));
+      const retry = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } }) }
+      );
+      if (retry.ok) {
+        const data = await retry.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      }
+    }
+    // 다음 모델 시도: 404, 429, 400, 503
+    if (![404, 429, 400, 503].includes(res.status)) throw lastErr;
     if (res.status === 429) await new Promise((r) => setTimeout(r, 3000));
   }
   throw lastErr;
