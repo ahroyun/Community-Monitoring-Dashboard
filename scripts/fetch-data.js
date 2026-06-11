@@ -148,6 +148,10 @@ function parseDcInside(html, source) {
   const posts = [];
   const rowRegex = /<tr[^>]*class="[^"]*ub-content[^"]*"[\s\S]*?<\/tr>/gi;
   for (const [row] of html.matchAll(rowRegex)) {
+    // 공지글 제외: TR 클래스에 notice 포함 또는 번호/제목 셀에 "공지" 텍스트
+    if (/class="[^"]*notice[^"]*"/i.test(row.match(/<tr[^>]*>/)?.[0] || "")) continue;
+    const numTd = row.match(/<td[^>]*class="[^"]*gall_num[^"]*"[\s\S]*?<\/td>/i)?.[0] || "";
+    if (/공지|설문/.test(stripTags(numTd))) continue;
     const subject = row.match(/<td[^>]*class="[^"]*gall_tit[^"]*"[\s\S]*?<\/td>/i)?.[0] || "";
     if (/공지/.test(subject)) continue;
     const linkMatch = subject.match(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
