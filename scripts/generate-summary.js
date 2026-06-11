@@ -41,8 +41,10 @@ async function callGemini(prompt) {
     const errText = await res.text();
     console.warn(`  [${model}] 실패 (${res.status}): ${errText.slice(0, 200)}`);
     lastErr = new Error(`Gemini API ${res.status} (${model}): ${errText}`);
-    // 404(모델 없음)는 다음 모델 시도, 그 외는 즉시 throw
-    if (res.status !== 404 && res.status !== 400) throw lastErr;
+    // 다음 모델 시도: 404(없는 모델), 429(할당량 초과), 400(잘못된 요청)
+    // 그 외(401 인증오류 등)는 즉시 throw
+    if (res.status !== 404 && res.status !== 429 && res.status !== 400) throw lastErr;
+    if (res.status === 429) await new Promise((r) => setTimeout(r, 3000));
   }
   throw lastErr;
 }
