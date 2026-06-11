@@ -584,7 +584,7 @@ function renderSummary() {
     : "";
 
   summaryContent.innerHTML = `
-    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstDate} 기준` : `${kstDate} 주간`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
+    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstDate} 전일 기준` : `${kstDate} 주간`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
     ${Object.entries(periodData).map(([game, data]) => {
       const color = GAME_COLORS[game] || "#666";
       const hasError = !!data.error;
