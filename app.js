@@ -355,7 +355,7 @@ function renderNotice() {
 }
 
 const COMMUNITY_PLATFORMS = ["네이버 게임라운지", "네이버 카페", "FLOOR", "DC"];
-const ALERT_TITLE_WORDS = ["결제", "환불", "접속", "버그", "오류", "상품"];
+const ALERT_TITLE_WORDS = ["결제", "환불", "접속", "버그", "오류", "상품", "로그인"];
 
 function parseCommunity(community) {
   for (const p of COMMUNITY_PLATFORMS) {
