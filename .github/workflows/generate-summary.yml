@@ -1,0 +1,33 @@
+name: Generate AI Summary
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 매일 오전 9시 KST (UTC 00:00)
+  workflow_dispatch:        # 수동 실행 가능
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate AI summary
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/generate-summary.js
+
+      - name: Commit summary.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add summary.json
+          git diff --staged --quiet || git commit -m "chore: update AI summary"
+          git pull -X ours origin main
+          git push
