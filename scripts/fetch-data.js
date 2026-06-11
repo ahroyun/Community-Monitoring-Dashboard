@@ -129,7 +129,7 @@ function extractBadges(title) {
 
 function makePost(source, title, url, author = "", date = "", views = "") {
   return {
-    id: `${source.url}-${title}`.replace(/\W/g, "").slice(0, 80),
+    id: url.replace(/https?:\/\//, "").replace(/\W/g, "").slice(-80),
     game: source.game,
     community: source.community,
     sourceType: source.type,
