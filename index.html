@@ -35,6 +35,12 @@
 
       <section class="insight-strip" id="insightCards" aria-label="커뮤니티 인사이트"></section>
 
+      <div class="main-tabs">
+        <button class="main-tab active" data-view="feed">실시간 피드</button>
+        <button class="main-tab" data-view="summary">AI 요약</button>
+      </div>
+
+      <div id="viewFeed">
       <section class="heatmap-section">
         <div class="heatmap-head">
           <div>
@@ -98,6 +104,17 @@
           <div id="feed" class="feed"></div>
         </section>
       </section>
+      </div><!-- /viewFeed -->
+
+      <div id="viewSummary" hidden>
+        <section class="summary-section">
+          <div class="summary-tabs">
+            <button class="summary-tab active" data-period="daily">일간 요약</button>
+            <button class="summary-tab" data-period="weekly">주간 요약</button>
+          </div>
+          <div id="summaryContent" class="summary-content"></div>
+        </section>
+      </div>
     </main>
     <script src="./app.js" type="module"></script>
   </body>
