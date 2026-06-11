@@ -446,7 +446,8 @@ const HEATMAP_GROUPS = [
 function renderHeatmap() {
   if (!state.data) return;
   const games = [...new Set(state.data.sources.map((s) => s.game))];
-  const posts = state.history ? state.history.posts || [] : allPosts();
+  const historyPosts = state.history?.posts || [];
+  const posts = historyPosts.length > 0 ? historyPosts : allPosts();
 
   const matrix = {};
   for (const grp of HEATMAP_GROUPS) {
