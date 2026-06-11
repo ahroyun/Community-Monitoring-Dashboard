@@ -11,12 +11,33 @@ if (!GEMINI_API_KEY) {
   process.exit(1);
 }
 
-// 사용 가능한 모델 순서대로 시도
-const GEMINI_MODELS = [
+// 사용 가능한 모델 목록 동적 조회
+async function getAvailableModels() {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.models || [])
+    .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+    .map((m) => m.name.replace("models/", ""));
+}
+
+// 우선순위 모델 목록 (실제 사용 가능한 것만 필터링됨)
+const PREFERRED_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-preview-05-20",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
-  "gemini-1.5-flash",
+  "gemini-2.0-flash-exp",
 ];
+
+const availableModels = await getAvailableModels();
+console.log("사용 가능한 모델:", availableModels.join(", "));
+
+const GEMINI_MODELS = PREFERRED_MODELS.filter((m) =>
+  availableModels.length === 0 || availableModels.includes(m)
+);
 
 async function callGemini(prompt) {
   let lastErr;
