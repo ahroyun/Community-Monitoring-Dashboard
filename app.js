@@ -17,6 +17,7 @@ const state = {
   query: "",
   onlyAlerts: false,
   keyword: "",
+  dateRange: "all",
   timer: null
 };
 
@@ -136,6 +137,28 @@ function isThisWeekPost(post) {
   return parsed >= start && parsed < end;
 }
 
+function isYesterdayPost(post) {
+  const parsed = parsePostDate(post);
+  if (!parsed) return false;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return parsed.getFullYear() === yesterday.getFullYear() &&
+    parsed.getMonth() === yesterday.getMonth() &&
+    parsed.getDate() === yesterday.getDate();
+}
+
+function matchesDateRange(post) {
+  if (state.dateRange === "all") return true;
+  if (state.dateRange === "today") return isTodayPost(post);
+  if (state.dateRange === "yesterday") return isYesterdayPost(post);
+  if (state.dateRange === "week") {
+    const parsed = parsePostDate(post);
+    if (!parsed) return false;
+    return parsed >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  }
+  return true;
+}
+
 function temporalClass(post) {
   if (isTodayPost(post)) return "today";
   if (isThisWeekPost(post)) return "this-week";
@@ -144,14 +167,17 @@ function temporalClass(post) {
 
 function filteredPosts() {
   const query = state.query.trim().toLowerCase();
+  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   return allPosts().filter((post) => {
+    const parsed = parsePostDate(post);
+    if (parsed && parsed < twoWeeksAgo) return false;
     const matchesGame = state.game === ALL || post.game === state.game;
     const matchesSource = state.sourceType === ALL || post.sourceType === state.sourceType;
     const matchesAlert = !state.onlyAlerts || post.badges.length > 0 || post.sentiment === "negative";
     const matchesKeyword = !state.keyword || post.badges.includes(state.keyword);
     const haystack = `${post.title} ${post.game} ${post.community} ${post.badges.join(" ")}`.toLowerCase();
     const matchesQuery = !query || haystack.includes(query);
-    return matchesGame && matchesSource && matchesAlert && matchesKeyword && matchesQuery;
+    return matchesGame && matchesSource && matchesAlert && matchesKeyword && matchesQuery && matchesDateRange(post);
   }).sort((a, b) => {
     const da = parsePostDate(a);
     const db = parsePostDate(b);
@@ -567,6 +593,15 @@ els.onlyAlerts.addEventListener("change", (event) => {
   renderFeed();
 });
 
+document.querySelectorAll(".date-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".date-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.dateRange = btn.dataset.range;
+    renderFeed();
+  });
+});
+
 // ── 메인 탭 (피드 / AI 요약) ────────────────────────
 const viewFeed    = document.querySelector("#viewFeed");
 const viewSummary = document.querySelector("#viewSummary");
@@ -579,12 +614,13 @@ function renderSummary() {
   }
   const periodData = state.summary[state.summaryPeriod] || {};
   const kstDate = state.summary.kstDate || "";
+  const kstYesterday = state.summary.kstYesterday || kstDate;
   const generatedAt = state.summary.generatedAt
     ? new Date(new Date(state.summary.generatedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " ")
     : "";
 
   summaryContent.innerHTML = `
-    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstDate} 전일 기준` : `${kstDate} 주간`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
+    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstYesterday} 하루치` : `최근 7일 (${kstDate} 기준)`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
     ${Object.entries(periodData).map(([game, data]) => {
       const color = GAME_COLORS[game] || "#666";
       const hasError = !!data.error;
