@@ -127,39 +127,70 @@ try {
   process.exit(1);
 }
 
-// 날짜 필터
-const now = new Date();
-const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD (UTC 기준, KST+9 보정)
-const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-const kstTodayStr = kstNow.toISOString().slice(0, 10);
-const kstWeekAgo = new Date(kstNow.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-function getPostDate(post) {
-  const d = post.date || "";
-  // "YYYY-MM-DD ..." → FLOOR (formatTimestamp 결과, KST)
-  let m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  // "YYYY.MM.DD ..." → DC title 속성 (KST)
-  m = d.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
-  if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
-  // 그 외(상대시각 등) → fetchedAt KST 변환으로 fallback
-  if (post.fetchedAt) {
-    return new Date(new Date(post.fetchedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+// ── app.js의 parsePostDate와 동일한 로직 ─────────────
+function parsePostDate(post) {
+  const date = String(post.date || "");
+  if (!date) return null;
+  const base = new Date(post.fetchedAt || Date.now());
+  let match;
+  match = date.match(/(\d+)\s*분\s*전/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 60_000);
+  match = date.match(/(\d+)\s*시간\s*전/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 3_600_000);
+  match = date.match(/(\d+)\s*일\s*전/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 86_400_000);
+  if (/방금/.test(date)) return base;
+  // 네이버 카페: '2026. 06. 08. PM 02:16'
+  match = date.match(/(20\d{2})\D+(\d{1,2})\D+(\d{1,2})\D+(AM|PM)\s+(\d{1,2}):(\d{2})/i);
+  if (match) {
+    let h = Number(match[5]);
+    const pm = match[4].toUpperCase() === "PM";
+    if (pm && h !== 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), h, Number(match[6]));
   }
-  return "";
+  // 일반: '2026-06-10 11:35' / '2026-06-10 11:35:22' / '2026.06.10 11:35:22'
+  match = date.match(/(20\d{2})[-.]\s*(\d{1,2})[-.]\s*(\d{1,2})(?:\D+(\d{1,2}):(\d{1,2}))?/);
+  if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4] || 0), Number(match[5] || 0));
+  return null;
 }
+
+// KST 기준 날짜 비교용 날짜 문자열 반환
+function postDateKST(post) {
+  const d = parsePostDate(post);
+  if (!d || isNaN(d)) return null;
+  // parsePostDate는 로컬 new Date() 사용 → Actions(UTC)에서 KST로 보정 필요
+  // fetchedAt 기반 상대시각은 이미 UTC 기준이므로 +9h 보정
+  const isRelative = /방금|분\s*전|시간\s*전|일\s*전/.test(post.date || "");
+  const kst = isRelative ? new Date(d.getTime() + 9 * 3_600_000) : d;
+  const p = (n) => String(n).padStart(2, "0");
+  return `${kst.getFullYear()}-${p(kst.getMonth() + 1)}-${p(kst.getDate())}`;
+}
+
+// KST 기준 날짜 범위 계산
+const now = new Date();
+const kstNow = new Date(now.getTime() + 9 * 3_600_000);
+const p2 = (n) => String(n).padStart(2, "0");
+const kstTodayStr = `${kstNow.getUTCFullYear()}-${p2(kstNow.getUTCMonth() + 1)}-${p2(kstNow.getUTCDate())}`;
+// 일간: 전날 하루 (매일 09:00 KST 생성 기준, 전일 00:00~23:59)
+const kstYesterday = new Date(kstNow.getTime() - 86_400_000);
+const kstYesterdayStr = `${kstYesterday.getUTCFullYear()}-${p2(kstYesterday.getUTCMonth() + 1)}-${p2(kstYesterday.getUTCDate())}`;
+// 주간: 7일 전 이후
+const kstWeekAgoStr = new Date(kstNow.getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
+
+console.log(`KST 기준 — 어제: ${kstYesterdayStr}, 7일 전: ${kstWeekAgoStr}`);
 
 const dailyResult = {};
 const weeklyResult = {};
 
 for (const game of GAMES) {
   const gamePosts = allPosts.filter((p) => p.game === game);
-  const todayPosts = gamePosts.filter((p) => getPostDate(p) === kstTodayStr);
-  const weekPosts  = gamePosts.filter((p) => getPostDate(p) >= kstWeekAgo);
+  const dailyPosts = gamePosts.filter((p) => postDateKST(p) === kstYesterdayStr);
+  const weekPosts  = gamePosts.filter((p) => { const d = postDateKST(p); return d && d >= kstWeekAgoStr; });
 
-  console.log(`[${game}] 오늘: ${todayPosts.length}건, 주간: ${weekPosts.length}건`);
+  console.log(`[${game}] 전일: ${dailyPosts.length}건, 주간: ${weekPosts.length}건`);
 
-  dailyResult[game]  = await summarizeGame(game, todayPosts, "daily");
+  dailyResult[game]  = await summarizeGame(game, dailyPosts, "daily");
   weeklyResult[game] = await summarizeGame(game, weekPosts,  "weekly");
 
   // Gemini 무료 tier rate limit 방지
