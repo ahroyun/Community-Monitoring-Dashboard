@@ -119,9 +119,7 @@ const kstTodayStr = kstNow.toISOString().slice(0, 10);
 const kstWeekAgo = new Date(kstNow.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 function getPostDate(post) {
-  // date 필드: "YYYY-MM-DD HH:mm" 형식(KST) — 앞 10자리가 날짜
-  if (post.date && post.date.length >= 10) return post.date.slice(0, 10);
-  // fallback: fetchedAt
+  // fetchedAt은 모든 게시글에 UTC ISO 형식으로 저장됨 → KST 변환
   if (post.fetchedAt) {
     return new Date(new Date(post.fetchedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   }
