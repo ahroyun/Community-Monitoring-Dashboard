@@ -135,7 +135,14 @@ const kstTodayStr = kstNow.toISOString().slice(0, 10);
 const kstWeekAgo = new Date(kstNow.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 function getPostDate(post) {
-  // fetchedAt은 모든 게시글에 UTC ISO 형식으로 저장됨 → KST 변환
+  const d = post.date || "";
+  // "YYYY-MM-DD ..." → FLOOR (formatTimestamp 결과, KST)
+  let m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // "YYYY.MM.DD ..." → DC title 속성 (KST)
+  m = d.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  // 그 외(상대시각 등) → fetchedAt KST 변환으로 fallback
   if (post.fetchedAt) {
     return new Date(new Date(post.fetchedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   }
