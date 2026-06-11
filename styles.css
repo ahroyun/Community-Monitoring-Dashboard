@@ -593,6 +593,109 @@ button:hover {
   text-align: left;
 }
 
+/* ── Main tabs (피드 / AI 요약) ──────────────────── */
+.main-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.main-tab {
+  height: 38px;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.main-tab.active {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+  background: #eff6ff;
+}
+
+/* ── Summary ─────────────────────────────────────── */
+.summary-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.summary-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.summary-tab {
+  height: 34px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.summary-tab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.summary-meta {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.summary-content {
+  display: grid;
+  gap: 14px;
+}
+
+.summary-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 16px 18px;
+  background: var(--panel);
+}
+
+.summary-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.summary-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.summary-body {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.summary-body strong {
+  color: var(--accent);
+}
+
+.summary-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
 /* ── Heatmap ─────────────────────────────────────── */
 .heatmap-section {
   margin-bottom: 14px;
