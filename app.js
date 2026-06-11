@@ -587,16 +587,20 @@ function renderSummary() {
     <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstDate} 기준` : `${kstDate} 주간`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
     ${Object.entries(periodData).map(([game, data]) => {
       const color = GAME_COLORS[game] || "#666";
+      const hasError = !!data.error;
       const text = (data.summary || "데이터 없음")
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/\n/g, "<br>");
+      const errorNote = hasError
+        ? `<p style="font-size:11px;color:#dc2626;margin-top:8px;word-break:break-all">⚠ API 오류: ${escapeHtml(data.error)}</p>`
+        : "";
       return `
         <div class="summary-card" style="border-left-color:${color}">
           <div class="summary-card-head">
             <span class="game-chip" data-game="${escapeHtml(game)}">${escapeHtml(game)}</span>
             <span class="summary-count">${data.postCount || 0}건 분석</span>
           </div>
-          <div class="summary-body">${text}</div>
+          <div class="summary-body">${text}${errorNote}</div>
         </div>`;
     }).join("")}
   `;
