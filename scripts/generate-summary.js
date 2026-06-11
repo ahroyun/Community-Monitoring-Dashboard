@@ -49,7 +49,7 @@ async function callGemini(prompt) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
         })
       }
     );
@@ -119,9 +119,13 @@ const kstTodayStr = kstNow.toISOString().slice(0, 10);
 const kstWeekAgo = new Date(kstNow.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 function getPostDate(post) {
-  // fetchedAt 기준 KST 날짜
-  if (!post.fetchedAt) return "";
-  return new Date(new Date(post.fetchedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // date 필드: "YYYY-MM-DD HH:mm" 형식(KST) — 앞 10자리가 날짜
+  if (post.date && post.date.length >= 10) return post.date.slice(0, 10);
+  // fallback: fetchedAt
+  if (post.fetchedAt) {
+    return new Date(new Date(post.fetchedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+  return "";
 }
 
 const dailyResult = {};
