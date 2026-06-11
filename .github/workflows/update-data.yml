@@ -27,5 +27,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json history.json
           git diff --staged --quiet || git commit -m "chore: update community data"
-          git pull -X ours origin main
+          git pull --no-rebase -X ours origin main
           git push
