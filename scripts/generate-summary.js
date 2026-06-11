@@ -86,13 +86,13 @@ async function callGemini(prompt) {
   throw lastErr;
 }
 
-function buildPrompt(game, posts, period) {
+function buildPrompt(game, posts, period, dateLabel) {
   const lines = posts.map((p) =>
     `- [${p.sentiment === "positive" ? "긍정" : p.sentiment === "negative" ? "부정" : "중립"}] ${p.title}${p.badges.length ? ` (키워드: ${p.badges.join(", ")})` : ""}`
   ).join("\n");
 
   return `당신은 모바일 게임 커뮤니티 동향 분석가입니다.
-아래는 "${game}" 게임 커뮤니티에서 ${period === "daily" ? "오늘" : "이번 주"} 수집된 게시글 목록입니다.
+아래는 "${game}" 게임 커뮤니티에서 ${dateLabel} 수집된 게시글 목록입니다.
 
 ${lines}
 
@@ -104,10 +104,10 @@ ${lines}
 **한줄 요약**: 전체 분위기를 한 문장으로`;
 }
 
-async function summarizeGame(game, posts, period) {
+async function summarizeGame(game, posts, period, dateLabel) {
   if (!posts.length) return { summary: "수집된 게시글이 없습니다.", postCount: 0 };
   try {
-    const prompt = buildPrompt(game, posts.slice(0, 80), period); // 토큰 절약
+    const prompt = buildPrompt(game, posts.slice(0, 80), period, dateLabel);
     const text = await callGemini(prompt);
     return { summary: text, postCount: posts.length };
   } catch (err) {
@@ -190,8 +190,10 @@ for (const game of GAMES) {
 
   console.log(`[${game}] 전일: ${dailyPosts.length}건, 주간: ${weekPosts.length}건`);
 
-  dailyResult[game]  = await summarizeGame(game, dailyPosts, "daily");
-  weeklyResult[game] = await summarizeGame(game, weekPosts,  "weekly");
+  const dailyLabel = `${kstYesterdayStr} 하루 동안`;
+  const weeklyLabel = `${kstWeekAgoStr} ~ ${kstTodayStr} 주간`;
+  dailyResult[game]  = await summarizeGame(game, dailyPosts, "daily",  dailyLabel);
+  weeklyResult[game] = await summarizeGame(game, weekPosts,  "weekly", weeklyLabel);
 
   // Gemini 무료 tier rate limit 방지
   await new Promise((r) => setTimeout(r, 2000));
