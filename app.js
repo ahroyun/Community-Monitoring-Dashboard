@@ -9,6 +9,9 @@ const GAME_COLORS = {
 const state = {
   data: null,
   history: null,
+  summary: null,
+  summaryPeriod: "daily",
+  view: "feed",
   game: ALL,
   sourceType: ALL,
   query: "",
@@ -562,6 +565,65 @@ els.searchInput.addEventListener("input", (event) => {
 els.onlyAlerts.addEventListener("change", (event) => {
   state.onlyAlerts = event.target.checked;
   renderFeed();
+});
+
+// ── 메인 탭 (피드 / AI 요약) ────────────────────────
+const viewFeed    = document.querySelector("#viewFeed");
+const viewSummary = document.querySelector("#viewSummary");
+const summaryContent = document.querySelector("#summaryContent");
+
+function renderSummary() {
+  if (!state.summary) {
+    summaryContent.innerHTML = `<div class="summary-empty">아직 생성된 요약이 없습니다.<br>매일 오전 9시에 자동 생성됩니다.<br><br>GitHub Actions에서 "Generate AI Summary" 워크플로우를 수동 실행하면 바로 확인할 수 있습니다.</div>`;
+    return;
+  }
+  const periodData = state.summary[state.summaryPeriod] || {};
+  const kstDate = state.summary.kstDate || "";
+  const generatedAt = state.summary.generatedAt
+    ? new Date(new Date(state.summary.generatedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " ")
+    : "";
+
+  summaryContent.innerHTML = `
+    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstDate} 기준` : `${kstDate} 주간`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
+    ${Object.entries(periodData).map(([game, data]) => {
+      const color = GAME_COLORS[game] || "#666";
+      const text = (data.summary || "데이터 없음")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\n/g, "<br>");
+      return `
+        <div class="summary-card" style="border-left-color:${color}">
+          <div class="summary-card-head">
+            <span class="game-chip" data-game="${escapeHtml(game)}">${escapeHtml(game)}</span>
+            <span class="summary-count">${data.postCount || 0}건 분석</span>
+          </div>
+          <div class="summary-body">${text}</div>
+        </div>`;
+    }).join("")}
+  `;
+}
+
+document.querySelectorAll(".main-tab").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.view = btn.dataset.view;
+    viewFeed.hidden    = state.view !== "feed";
+    viewSummary.hidden = state.view !== "summary";
+    if (state.view === "summary" && !state.summary) {
+      summaryContent.innerHTML = `<div class="summary-empty">요약 불러오는 중...</div>`;
+      state.summary = await fetchJson("summary.json").catch(() => null);
+      renderSummary();
+    }
+  });
+});
+
+document.querySelectorAll(".summary-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".summary-tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.summaryPeriod = btn.dataset.period;
+    renderSummary();
+  });
 });
 
 load();
