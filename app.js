@@ -238,12 +238,13 @@ function sentimentLabel(value) {
 }
 
 function renderInsights() {
-  const scoped = postsForSelectedGame();
-  const today = scoped.filter(isTodayPost);
-  const alertPosts = scoped.filter((post) => post.badges.length > 0);
-  const negative = scoped.filter((post) => post.sentiment === "negative");
-  const [topCommunity, topCommunityCount] = topEntry(countBy(scoped, (post) => post.community));
-  const [topKeyword, topKeywordCount] = topEntry(Object.fromEntries(keywordEntries(scoped)));
+  const historyPosts = state.history?.posts || [];
+  const scopedHistory = state.game === ALL ? historyPosts : historyPosts.filter((p) => p.game === state.game);
+  const todayPosts = scopedHistory.filter(isTodayPost);
+  const alertPosts = todayPosts.filter((post) => post.badges.length > 0);
+  const negative = todayPosts.filter((post) => post.sentiment === "negative");
+  const [topCommunity, topCommunityCount] = topEntry(countBy(todayPosts, (post) => post.community));
+  const [topKeyword, topKeywordCount] = topEntry(Object.fromEntries(keywordEntries(todayPosts)));
   const target = state.game === ALL ? "전체 게임" : state.game;
 
   els.insightCards.innerHTML = [
@@ -251,8 +252,8 @@ function renderInsights() {
       label: "오늘 등록",
       icon: "ti-calendar-stats",
       color: "#0369a1",
-      value: today.length.toLocaleString("ko-KR"),
-      note: `${target} 기준 최신 흐름`
+      value: todayPosts.length.toLocaleString("ko-KR"),
+      note: `${target} 기준 오늘 누적`
     },
     {
       label: "이슈 키워드",
