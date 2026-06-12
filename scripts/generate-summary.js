@@ -196,6 +196,7 @@ const prevWeekSunStr = `${prevWeekSun.getUTCFullYear()}-${p2(prevWeekSun.getUTCM
 const prevWeekMonStr = `${prevWeekMon.getUTCFullYear()}-${p2(prevWeekMon.getUTCMonth() + 1)}-${p2(prevWeekMon.getUTCDate())}`;
 
 // 월요일에만 주간 요약 재생성, 나머지 요일은 기존 주간 데이터 유지
+// 단, 기존 주간 데이터가 없거나 구형 포맷(totalViews 없음)이면 요일 무관하게 재생성
 const isMonday = kstDayOfWeek === 1;
 console.log(`KST 기준 — 어제: ${kstYesterdayStr}, 전주: ${prevWeekMonStr} ~ ${prevWeekSunStr}, 월요일 실행: ${isMonday}`);
 
@@ -205,6 +206,15 @@ let existingSummary = {};
 try {
   existingSummary = JSON.parse(await readFile(outPath, "utf-8"));
 } catch { /* 없으면 무시 */ }
+
+// 주간 데이터가 없거나, 구형 포맷(totalViews 미포함), 또는 주가 바뀐 경우 재생성
+const existingWeekly = existingSummary.weekly || {};
+const weeklyDataStale =
+  Object.keys(existingWeekly).length === 0 ||
+  Object.values(existingWeekly).some((g) => g.totalViews === undefined) ||
+  existingSummary.prevWeekMon !== prevWeekMonStr;
+const shouldUpdateWeekly = isMonday || weeklyDataStale;
+console.log(`주간 재생성 여부: ${shouldUpdateWeekly} (월요일: ${isMonday}, 데이터 stale: ${weeklyDataStale})`);
 
 const dailyResult = {};
 const weeklyResult = {};
@@ -216,7 +226,7 @@ for (const game of GAMES) {
   console.log(`[${game}] 전일: ${dailyPosts.length}건`);
   dailyResult[game] = await summarizeGame(game, dailyPosts, "daily", `${kstYesterdayStr} 하루 동안`);
 
-  if (isMonday) {
+  if (shouldUpdateWeekly) {
     const weekPosts = gamePosts.filter((p) => {
       const d = postDateKST(p);
       return d && d >= prevWeekMonStr && d <= prevWeekSunStr;
@@ -236,7 +246,7 @@ const summary = {
   prevWeekMon: prevWeekMonStr,
   prevWeekSun: prevWeekSunStr,
   daily: dailyResult,
-  weekly: isMonday ? weeklyResult : (existingSummary.weekly || {}),
+  weekly: shouldUpdateWeekly ? weeklyResult : existingWeekly,
 };
 
 await writeFile(outPath, JSON.stringify(summary, null, 2));
