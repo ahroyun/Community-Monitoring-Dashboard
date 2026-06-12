@@ -172,13 +172,29 @@ const now = new Date();
 const kstNow = new Date(now.getTime() + 9 * 3_600_000);
 const p2 = (n) => String(n).padStart(2, "0");
 const kstTodayStr = `${kstNow.getUTCFullYear()}-${p2(kstNow.getUTCMonth() + 1)}-${p2(kstNow.getUTCDate())}`;
+
 // 일간: 전날 하루 (매일 09:00 KST 생성 기준, 전일 00:00~23:59)
 const kstYesterday = new Date(kstNow.getTime() - 86_400_000);
 const kstYesterdayStr = `${kstYesterday.getUTCFullYear()}-${p2(kstYesterday.getUTCMonth() + 1)}-${p2(kstYesterday.getUTCDate())}`;
-// 주간: 7일 전 이후
-const kstWeekAgoStr = new Date(kstNow.getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
 
-console.log(`KST 기준 — 어제: ${kstYesterdayStr}, 7일 전: ${kstWeekAgoStr}`);
+// 주간: 전주 월~일 (0=일, 1=월 ... 6=토)
+const kstDayOfWeek = kstNow.getUTCDay();
+const daysToLastSun = kstDayOfWeek === 0 ? 7 : kstDayOfWeek;
+const prevWeekSun = new Date(kstNow.getTime() - daysToLastSun * 86_400_000);
+const prevWeekMon = new Date(prevWeekSun.getTime() - 6 * 86_400_000);
+const prevWeekSunStr = `${prevWeekSun.getUTCFullYear()}-${p2(prevWeekSun.getUTCMonth() + 1)}-${p2(prevWeekSun.getUTCDate())}`;
+const prevWeekMonStr = `${prevWeekMon.getUTCFullYear()}-${p2(prevWeekMon.getUTCMonth() + 1)}-${p2(prevWeekMon.getUTCDate())}`;
+
+// 월요일에만 주간 요약 재생성, 나머지 요일은 기존 주간 데이터 유지
+const isMonday = kstDayOfWeek === 1;
+console.log(`KST 기준 — 어제: ${kstYesterdayStr}, 전주: ${prevWeekMonStr} ~ ${prevWeekSunStr}, 월요일 실행: ${isMonday}`);
+
+// 기존 summary.json 로드 (비월요일 시 주간 데이터 보존용)
+const outPath = join(__dirname, "../summary.json");
+let existingSummary = {};
+try {
+  existingSummary = JSON.parse(await readFile(outPath, "utf-8"));
+} catch { /* 없으면 무시 */ }
 
 const dailyResult = {};
 const weeklyResult = {};
@@ -186,14 +202,18 @@ const weeklyResult = {};
 for (const game of GAMES) {
   const gamePosts = allPosts.filter((p) => p.game === game);
   const dailyPosts = gamePosts.filter((p) => postDateKST(p) === kstYesterdayStr);
-  const weekPosts  = gamePosts.filter((p) => { const d = postDateKST(p); return d && d >= kstWeekAgoStr; });
 
-  console.log(`[${game}] 전일: ${dailyPosts.length}건, 주간: ${weekPosts.length}건`);
+  console.log(`[${game}] 전일: ${dailyPosts.length}건`);
+  dailyResult[game] = await summarizeGame(game, dailyPosts, "daily", `${kstYesterdayStr} 하루 동안`);
 
-  const dailyLabel = `${kstYesterdayStr} 하루 동안`;
-  const weeklyLabel = `${kstWeekAgoStr} ~ ${kstTodayStr} 주간`;
-  dailyResult[game]  = await summarizeGame(game, dailyPosts, "daily",  dailyLabel);
-  weeklyResult[game] = await summarizeGame(game, weekPosts,  "weekly", weeklyLabel);
+  if (isMonday) {
+    const weekPosts = gamePosts.filter((p) => {
+      const d = postDateKST(p);
+      return d && d >= prevWeekMonStr && d <= prevWeekSunStr;
+    });
+    console.log(`[${game}] 주간: ${weekPosts.length}건`);
+    weeklyResult[game] = await summarizeGame(game, weekPosts, "weekly", `${prevWeekMonStr} ~ ${prevWeekSunStr}`);
+  }
 
   // Gemini 무료 tier rate limit 방지
   await new Promise((r) => setTimeout(r, 2000));
@@ -203,10 +223,11 @@ const summary = {
   generatedAt: new Date().toISOString(),
   kstDate: kstTodayStr,
   kstYesterday: kstYesterdayStr,
+  prevWeekMon: prevWeekMonStr,
+  prevWeekSun: prevWeekSunStr,
   daily: dailyResult,
-  weekly: weeklyResult
+  weekly: isMonday ? weeklyResult : (existingSummary.weekly || {}),
 };
 
-const outPath = join(__dirname, "../summary.json");
 await writeFile(outPath, JSON.stringify(summary, null, 2));
 console.log(`✓ summary.json 생성 완료 (${kstTodayStr} KST 기준)`);
