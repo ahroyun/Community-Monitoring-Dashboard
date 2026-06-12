@@ -616,12 +616,15 @@ function renderSummary() {
   const periodData = state.summary[state.summaryPeriod] || {};
   const kstDate = state.summary.kstDate || "";
   const kstYesterday = state.summary.kstYesterday || kstDate;
+  const prevWeekRange = (state.summary.prevWeekMon && state.summary.prevWeekSun)
+    ? `${state.summary.prevWeekMon} ~ ${state.summary.prevWeekSun}`
+    : `최근 7일 (${kstDate} 기준)`;
   const generatedAt = state.summary.generatedAt
     ? new Date(new Date(state.summary.generatedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " ")
     : "";
 
   summaryContent.innerHTML = `
-    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstYesterday} 하루치` : `최근 7일 (${kstDate} 기준)`} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
+    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstYesterday} 하루치` : prevWeekRange} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
     ${Object.entries(periodData).map(([game, data]) => {
       const color = GAME_COLORS[game] || "#666";
       const hasError = !!data.error;
