@@ -623,24 +623,55 @@ function renderSummary() {
     ? new Date(new Date(state.summary.generatedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " ")
     : "";
 
+  const SUMMARY_SECTIONS = ["주요 이슈", "유저 반응", "주목할 키워드", "한줄 요약"];
+
+  function parseSummary(text) {
+    const result = {};
+    SUMMARY_SECTIONS.forEach((label, i) => {
+      const next = SUMMARY_SECTIONS[i + 1];
+      const re = new RegExp(
+        `\\[${label}\\]\\s*([\\s\\S]*?)${next ? `(?=\\[${next}\\])` : "$"}`,
+        "i"
+      );
+      const m = (text || "").match(re);
+      result[label] = m ? m[1].trim() : "";
+    });
+    return result;
+  }
+
   summaryContent.innerHTML = `
     <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstYesterday} 하루치` : prevWeekRange} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
     ${Object.entries(periodData).map(([game, data]) => {
       const color = GAME_COLORS[game] || "#666";
-      const hasError = !!data.error;
-      const text = (data.summary || "데이터 없음")
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/\n/g, "<br>");
-      const errorNote = hasError
-        ? `<p style="font-size:11px;color:#dc2626;margin-top:8px;word-break:break-all">⚠ API 오류: ${escapeHtml(data.error)}</p>`
-        : "";
+      const sections = parseSummary(data.summary);
+      const hasContent = SUMMARY_SECTIONS.some((l) => sections[l]);
+      const totalViews = data.totalViews ? data.totalViews.toLocaleString("ko-KR") : "-";
+      const totalComments = data.totalComments != null ? data.totalComments.toLocaleString("ko-KR") : "-";
+      const statsHtml = `
+        <div class="summary-stats">
+          <span>📝 게시글 <strong>${data.postCount || 0}</strong>건</span>
+          <span>👁 총 조회 <strong>${totalViews}</strong>회</span>
+          <span>💬 총 댓글 <strong>${totalComments}</strong>개</span>
+        </div>`;
+      const bodyHtml = hasContent
+        ? SUMMARY_SECTIONS.map((label) => {
+            const content = sections[label];
+            if (!content) return "";
+            return `<div class="summary-section">
+              <span class="summary-section-label">${escapeHtml(label)}</span>
+              <p class="summary-section-body">${escapeHtml(content)}</p>
+            </div>`;
+          }).join("")
+        : data.error
+          ? `<p class="summary-error">⚠ 요약 생성 실패: ${escapeHtml(data.error)}</p>`
+          : `<p class="summary-empty-msg">수집된 게시글이 없습니다.</p>`;
       return `
         <div class="summary-card" style="border-left-color:${color}">
           <div class="summary-card-head">
             <span class="game-chip" data-game="${escapeHtml(game)}">${escapeHtml(game)}</span>
-            <span class="summary-count">${data.postCount || 0}건 분석</span>
           </div>
-          <div class="summary-body">${text}${errorNote}</div>
+          ${statsHtml}
+          <div class="summary-body">${bodyHtml}</div>
         </div>`;
     }).join("")}
   `;
