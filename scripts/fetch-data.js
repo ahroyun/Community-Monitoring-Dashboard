@@ -373,8 +373,23 @@ const merged = [
   ...newPosts.filter((p) => !existingIds.has(p.id))
 ];
 
-const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-const trimmed = merged.filter((p) => (p.fetchedAt || "") >= cutoff);
+const cutoffDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+const cutoff = cutoffDate.toISOString();
+
+// 게시글 실제 날짜 파싱 (절대날짜만 - 상대시각은 최근이므로 통과)
+function parseAbsoluteDate(dateStr) {
+  if (!dateStr) return null;
+  const m = dateStr.match(/(\d{4})[-.]\s*(\d{1,2})[-.]\s*(\d{1,2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return null;
+}
+
+const trimmed = merged.filter((p) => {
+  if ((p.fetchedAt || "") < cutoff) return false;
+  const postDate = parseAbsoluteDate(p.date);
+  if (postDate && postDate < cutoffDate) return false;
+  return true;
+});
 
 await writeFile(historyPath, JSON.stringify({ updatedAt: new Date().toISOString(), posts: trimmed }));
 console.log(`✓ history.json: 총 ${trimmed.length}개 (신규 ${newPosts.filter((p) => !existingIds.has(p.id)).length}개 추가)`);
