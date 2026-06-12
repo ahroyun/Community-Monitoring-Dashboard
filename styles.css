@@ -662,6 +662,11 @@ button:hover {
   font-size: 13px;
   font-weight: 700;
   border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .summary-tab.active {
@@ -718,7 +723,7 @@ button:hover {
   font-weight: 700;
 }
 
-.summary-section {
+.summary-row {
   display: grid;
   grid-template-columns: 90px 1fr;
   gap: 6px 12px;
@@ -727,7 +732,7 @@ button:hover {
   align-items: baseline;
 }
 
-.summary-section:last-child {
+.summary-row:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
