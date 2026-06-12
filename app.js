@@ -654,7 +654,7 @@ function renderSummary() {
       const color = GAME_COLORS[game] || "#666";
       const sections = parseSummary(data.summary);
       const hasContent = SUMMARY_SECTIONS.some((l) => sections[l]);
-      const totalViews = data.totalViews ? data.totalViews.toLocaleString("ko-KR") : "-";
+      const totalViews = data.totalViews != null ? data.totalViews.toLocaleString("ko-KR") : "-";
       const totalComments = data.totalComments != null ? data.totalComments.toLocaleString("ko-KR") : "-";
       const statsHtml = `
         <div class="summary-stats">
