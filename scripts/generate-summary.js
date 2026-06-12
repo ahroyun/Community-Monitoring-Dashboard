@@ -96,23 +96,33 @@ function buildPrompt(game, posts, period, dateLabel) {
 
 ${lines}
 
-다음 형식으로 한국어 요약을 작성해주세요. 각 항목은 2~3문장 이내로 간결하게 작성하세요.
+아래 4개 항목을 반드시 이 형식 그대로 작성하세요. 항목 순서와 레이블을 절대 바꾸지 마세요. 각 항목은 2~3문장 이내로 간결하게 작성하세요.
 
-**주요 이슈**: 오늘 가장 많이 언급된 문제나 화제
-**유저 반응**: 전반적인 긍부정 분위기와 이유
-**주목할 키워드**: 반복 등장한 키워드와 맥락
-**한줄 요약**: 전체 분위기를 한 문장으로`;
+[주요 이슈]
+가장 많이 언급된 문제나 화제를 작성하세요.
+
+[유저 반응]
+전반적인 긍부정 분위기와 이유를 작성하세요.
+
+[주목할 키워드]
+반복 등장한 키워드와 맥락을 작성하세요.
+
+[한줄 요약]
+전체 분위기를 한 문장으로 작성하세요.`;
 }
 
 async function summarizeGame(game, posts, period, dateLabel) {
-  if (!posts.length) return { summary: "수집된 게시글이 없습니다.", postCount: 0 };
+  const postCount = posts.length;
+  const totalViews = posts.reduce((sum, p) => sum + (parseInt(p.views) || 0), 0);
+  const totalComments = posts.reduce((sum, p) => sum + (parseInt(p.comments) || 0), 0);
+  if (!posts.length) return { summary: "", postCount: 0, totalViews: 0, totalComments: 0 };
   try {
     const prompt = buildPrompt(game, posts.slice(0, 80), period, dateLabel);
     const text = await callGemini(prompt);
-    return { summary: text, postCount: posts.length };
+    return { summary: text, postCount, totalViews, totalComments };
   } catch (err) {
     console.error(`[${game}] 요약 실패:`, err.message);
-    return { summary: "요약 생성 중 오류가 발생했습니다.", postCount: posts.length, error: err.message };
+    return { summary: "", postCount, totalViews, totalComments, error: err.message };
   }
 }
 
