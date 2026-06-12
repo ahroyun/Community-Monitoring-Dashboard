@@ -242,7 +242,7 @@ function renderInsights() {
   const scopedHistory = state.game === ALL ? historyPosts : historyPosts.filter((p) => p.game === state.game);
   const todayPosts = scopedHistory.filter(isTodayPost);
   const alertPosts = todayPosts.filter((post) => post.badges.length > 0);
-  const negative = todayPosts.filter((post) => post.sentiment === "negative");
+  const totalKeywordHits = todayPosts.reduce((sum, post) => sum + post.badges.length, 0);
   const [topCommunity, topCommunityCount] = topEntry(countBy(todayPosts, (post) => post.community));
   const [topKeyword, topKeywordCount] = topEntry(Object.fromEntries(keywordEntries(todayPosts)));
   const target = state.game === ALL ? "전체 게임" : state.game;
@@ -266,8 +266,8 @@ function renderInsights() {
       label: "주의 신호",
       icon: "ti-mood-sad",
       color: "#d64545",
-      value: negative.length.toLocaleString("ko-KR"),
-      note: "버그, 오류, 렉, 환불 등 제목 기반"
+      value: totalKeywordHits.toLocaleString("ko-KR"),
+      note: "오늘 감지된 총 키워드 발생 건수"
     },
     {
       label: "활성 커뮤니티",
