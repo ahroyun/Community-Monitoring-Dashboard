@@ -507,8 +507,7 @@ async function exportExcel() {
       });
     }
 
-    const rows = posts.map((p) => ({
-      "게임": p.game,
+    const toRow = (p) => ({
       "커뮤니티": p.community,
       "제목": p.title,
       "링크": p.url,
@@ -518,12 +517,15 @@ async function exportExcel() {
       "감성": { positive: "긍정", neutral: "중립", negative: "주의" }[p.sentiment] || "",
       "이슈키워드": p.badges.join(", "),
       "수집일시": p.fetchedAt
-    }));
+    });
+    const colWidths = [18, 50, 60, 14, 18, 8, 6, 20, 20].map((w) => ({ wch: w }));
 
-    const ws = window.XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [16, 18, 50, 60, 14, 18, 8, 6, 20, 20].map((w) => ({ wch: w }));
     const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "커뮤니티 동향");
+    ["대항해시대 오리진", "언디셈버", "창세기전 모바일"].forEach((game) => {
+      const ws = window.XLSX.utils.json_to_sheet(posts.filter((p) => p.game === game).map(toRow));
+      ws["!cols"] = colWidths;
+      window.XLSX.utils.book_append_sheet(wb, ws, game);
+    });
     const today = new Date().toISOString().slice(0, 10);
     window.XLSX.writeFile(wb, `커뮤니티동향_${today}.xlsx`);
   } catch (err) {
