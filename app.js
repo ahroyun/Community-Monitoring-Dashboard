@@ -627,14 +627,23 @@ function renderSummary() {
 
   function parseSummary(text) {
     const result = {};
+    const t = text || "";
     SUMMARY_SECTIONS.forEach((label, i) => {
       const next = SUMMARY_SECTIONS[i + 1];
-      const re = new RegExp(
+      // 신 포맷: [주요 이슈]
+      const re1 = new RegExp(
         `\\[${label}\\]\\s*([\\s\\S]*?)${next ? `(?=\\[${next}\\])` : "$"}`,
         "i"
       );
-      const m = (text || "").match(re);
-      result[label] = m ? m[1].trim() : "";
+      const m1 = t.match(re1);
+      if (m1) { result[label] = m1[1].trim(); return; }
+      // 구 포맷 fallback: **주요 이슈**: 또는 **주요 이슈**
+      const re2 = new RegExp(
+        `\\*\\*${label}\\*\\*:?\\s*([\\s\\S]*?)${next ? `(?=\\*\\*${next}\\*\\*)` : "$"}`,
+        "i"
+      );
+      const m2 = t.match(re2);
+      result[label] = m2 ? m2[1].trim() : "";
     });
     return result;
   }
@@ -657,7 +666,7 @@ function renderSummary() {
         ? SUMMARY_SECTIONS.map((label) => {
             const content = sections[label];
             if (!content) return "";
-            return `<div class="summary-section">
+            return `<div class="summary-row">
               <span class="summary-section-label">${escapeHtml(label)}</span>
               <p class="summary-section-body">${escapeHtml(content)}</p>
             </div>`;
