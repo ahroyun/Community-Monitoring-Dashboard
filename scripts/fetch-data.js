@@ -127,7 +127,7 @@ function extractBadges(title) {
   return watchWords.filter((word) => title.includes(word)).slice(0, 4);
 }
 
-function makePost(source, title, url, author = "", date = "", views = "") {
+function makePost(source, title, url, author = "", date = "", views = "", comments = "") {
   return {
     id: url.replace(/https?:\/\//, "").replace(/\W/g, "").slice(-80),
     game: source.game,
@@ -138,6 +138,7 @@ function makePost(source, title, url, author = "", date = "", views = "") {
     author,
     date,
     views,
+    comments,
     sentiment: scoreSentiment(title),
     badges: extractBadges(title),
     fetchedAt: new Date().toISOString()
@@ -164,7 +165,9 @@ function parseDcInside(html, source) {
     const dateTd = row.match(/<td[^>]*class="[^"]*gall_date[^"]*"([^>]*)>[\s\S]*?<\/td>/i);
     const date = dateTd?.[1]?.match(/title="([^"]+)"/)?.[1] || stripTags(dateTd?.[0] || "");
     const views = stripTags(row.match(/<td[^>]*class="[^"]*gall_count[^"]*"[\s\S]*?<\/td>/i)?.[0] || "");
-    posts.push(makePost(source, title, absolutize(linkMatch?.[1] || source.url, source.url), author, date, views));
+    const replyMatch = subject.match(/<span[^>]*class="[^"]*reply_num[^"]*"[^>]*>\[(\d+)\]/i);
+    const comments = replyMatch ? replyMatch[1] : "";
+    posts.push(makePost(source, title, absolutize(linkMatch?.[1] || source.url, source.url), author, date, views, comments));
   }
   return posts;
 }
@@ -181,10 +184,11 @@ function parseFloor(html, source) {
     const author = stripTags(body.match(/<div[^>]*class="[^"]*user-nick[^"]*"[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i)?.[1] || "");
     const date = stripTags(body.match(/<p[^>]*class="[^"]*ago[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] || "");
     const views = stripTags(body.match(/<p[^>]*class="[^"]*hits[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] || "");
+    const comments = stripTags(body.match(/<p[^>]*class="[^"]*comment[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] || "");
     const key = href;
     if (seen.has(key)) continue;
     seen.add(key);
-    posts.push(makePost(source, title, absolutize(href, source.url), author, date, views));
+    posts.push(makePost(source, title, absolutize(href, source.url), author, date, views, comments));
   }
   return posts;
 }
@@ -225,7 +229,8 @@ async function fetchNaverCafeSource(source) {
         `https://cafe.naver.com/f-e/cafes/${source.cafeId}/articles/${item.articleId}?menuid=${source.menuId}`,
         item.writerInfo?.nickName || "",
         formatTimestamp(item.writeDateTimestamp),
-        item.readCount ? String(item.readCount) : ""
+        item.readCount ? String(item.readCount) : "",
+        item.commentCount != null ? String(item.commentCount) : ""
       );
     });
   return {
@@ -265,7 +270,8 @@ async function fetchNaverGameSource(source) {
       `https://game.naver.com/lounge/${source.loungeId}/board/detail/${feed.feedId}`,
       feed.writer?.nickname || feed.member?.nickname || "",
       formatNaverGameDate(feed.createdDate || ""),
-      feed.readCount ? String(feed.readCount) : ""
+      item.readCount ? String(item.readCount) : "",
+      item.comment?.totalCount != null ? String(item.comment.totalCount) : ""
     );
   });
   return {
