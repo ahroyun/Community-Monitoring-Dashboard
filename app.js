@@ -322,9 +322,9 @@ function renderSentiment() {
 }
 
 function renderFilters() {
-  const posts = allPosts();
   const games = [ALL, ...new Set(state.data.sources.map((source) => source.game))];
-  const counts = countBy(posts, (post) => post.game);
+  const todayHistory = (state.history?.posts || []).filter(isTodayPost);
+  const counts = countBy(todayHistory, (post) => post.game);
 
   els.gameFilters.innerHTML = games.map((game) => {
     const color = GAME_COLORS[game];
@@ -332,7 +332,7 @@ function renderFilters() {
     return `
       <button class="filter ${state.game === game ? "active" : ""}" type="button" data-game="${escapeHtml(game)}">
         <span>${dot}${escapeHtml(game)}</span>
-        <small>${game === ALL ? posts.length : counts[game] || 0}</small>
+        <small>${game === ALL ? todayHistory.length : counts[game] || 0}</small>
       </button>
     `;
   }).join("");
