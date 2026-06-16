@@ -36,6 +36,27 @@ const sources = [
     url: "https://gall.dcinside.com/mgallery/board/lists/?id=bigtimeofnavigation"
   },
   {
+    game: "대항해시대 오리진",
+    community: "FLOOR US",
+    type: "floor",
+    region: "global",
+    url: "https://uwo.floor.line.games/us/bbs/community/community_us/1"
+  },
+  {
+    game: "대항해시대 오리진",
+    community: "FLOOR JP",
+    type: "floor",
+    region: "global",
+    url: "https://uwo.floor.line.games/jp/bbs/community/community_jp/1"
+  },
+  {
+    game: "대항해시대 오리진",
+    community: "FLOOR TW",
+    type: "floor",
+    region: "global",
+    url: "https://uwo.floor.line.games/tw/bbs/community/community_tw/1"
+  },
+  {
     game: "언디셈버",
     community: "FLOOR 자유게시판",
     type: "floor",
@@ -133,6 +154,7 @@ function makePost(source, title, url, author = "", date = "", views = "", commen
     game: source.game,
     community: source.community,
     sourceType: source.type,
+    region: source.region || "kr",
     title,
     url,
     author,
@@ -178,7 +200,7 @@ function parseFloor(html, source) {
   const itemRegex = /<a\b(?=[^>]*class="[^"]*\bbbs-detail-link\b[^"]*")([^>]*)>([\s\S]*?)<\/a>/gi;
   for (const [, attrs, body] of html.matchAll(itemRegex)) {
     const href = attrs.match(/\bhref=["']([^"']+)["']/i)?.[1] || "";
-    if (!/^\/kr\/bbsCmn\/detail\/\d+/.test(href)) continue;
+    if (!/^\/[a-z]{2}\/bbsCmn\/detail\/\d+/.test(href)) continue;
     const title = stripTags(body.match(/<div[^>]*class="[^"]*noti-tit[^"]*"[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i)?.[1] || body);
     if (!title || title.length < 2) continue;
     const author = stripTags(body.match(/<div[^>]*class="[^"]*user-nick[^"]*"[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i)?.[1] || "");
