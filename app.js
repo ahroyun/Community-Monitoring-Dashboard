@@ -410,7 +410,16 @@ function renderNotice() {
 }
 
 const COMMUNITY_PLATFORMS = ["네이버 게임라운지", "네이버 카페", "FLOOR", "DC"];
-const ALERT_TITLE_WORDS = ["결제", "환불", "접속", "버그", "오류", "상품", "로그인", "핵", "구매", "설치"];
+const ALERT_TITLE_WORDS = [
+  // 한국어
+  "결제", "환불", "접속", "버그", "오류", "상품", "로그인", "핵", "구매", "설치",
+  // English
+  "bug", "error", "crash", "refund", "payment", "login", "connect", "hack", "cheat", "bot", "purchase", "buy", "shop", "install",
+  // 日本語
+  "バグ", "エラー", "返金", "決済", "接続", "ログイン", "チート", "ハック", "購入", "商品", "インストール",
+  // 繁體/簡體中文
+  "錯誤", "退款", "付款", "登入", "連線", "外掛", "作弊", "購買", "安裝"
+];
 
 function parseCommunity(community) {
   for (const p of COMMUNITY_PLATFORMS) {
