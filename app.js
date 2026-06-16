@@ -48,7 +48,8 @@ const sourceLabels = {
   floor: "FLOOR",
   dcinside: "DC",
   naverCafe: "네이버 카페",
-  naverGame: "게임라운지"
+  naverGame: "게임라운지",
+  global: "글로벌"
 };
 
 function escapeHtml(value) {
@@ -172,7 +173,8 @@ function filteredPosts() {
     const parsed = parsePostDate(post);
     if (parsed && parsed < twoWeeksAgo) return false;
     const matchesGame = state.game === ALL || post.game === state.game;
-    const matchesSource = state.sourceType === ALL || post.sourceType === state.sourceType;
+    const matchesSource = state.sourceType === ALL
+      || (state.sourceType === "global" ? post.region === "global" : post.sourceType === state.sourceType);
     const matchesAlert = !state.onlyAlerts || post.badges.length > 0 || post.sentiment === "negative";
     const matchesKeyword = !state.keyword || post.badges.includes(state.keyword);
     const haystack = `${post.title} ${post.game} ${post.community} ${post.badges.join(" ")}`.toLowerCase();
@@ -371,7 +373,12 @@ function availableSourceTypes() {
       .map((result) => result.source.type)
   );
   const types = scopedSources.map((source) => source.type).filter((type) => sourceTypesWithPosts.has(type));
-  return [ALL, ...new Set(types)];
+  const hasGlobal = state.data.results.some((result) =>
+    result.source.region === "global" &&
+    (state.game === ALL || result.source.game === state.game) &&
+    result.posts.length > 0
+  );
+  return [ALL, ...new Set(types), ...(hasGlobal ? ["global"] : [])];
 }
 
 function renderNotice() {
