@@ -69,6 +69,27 @@ const sources = [
     url: "https://gall.dcinside.com/mgallery/board/lists/?id=undecember"
   },
   {
+    game: "언디셈버",
+    community: "FLOOR US",
+    type: "floor",
+    region: "global",
+    url: "https://ud.floor.line.games/us/bbs/community/community_us/1"
+  },
+  {
+    game: "언디셈버",
+    community: "FLOOR JP",
+    type: "floor",
+    region: "global",
+    url: "https://ud.floor.line.games/jp/bbs/community/community_jp/1"
+  },
+  {
+    game: "언디셈버",
+    community: "FLOOR TW",
+    type: "floor",
+    region: "global",
+    url: "https://ud.floor.line.games/tw/bbs/community/community_tw/1"
+  },
+  {
     game: "창세기전 모바일",
     community: "네이버 게임라운지 자유",
     type: "naverGame",
