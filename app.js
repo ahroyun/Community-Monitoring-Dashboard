@@ -90,13 +90,31 @@ function parsePostDate(post) {
   if (!date) return null;
 
   const base = new Date(post.fetchedAt || Date.now());
-  let match = date.match(/(\d+)\s*분\s*전/);
+  let match;
+  // 한국어
+  match = date.match(/(\d+)\s*분\s*전/);
   if (match) return new Date(base.getTime() - Number(match[1]) * 60_000);
   match = date.match(/(\d+)\s*시간\s*전/);
-  if (match) return new Date(base.getTime() - Number(match[1]) * 60 * 60_000);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 3_600_000);
   match = date.match(/(\d+)\s*일\s*전/);
-  if (match) return new Date(base.getTime() - Number(match[1]) * 24 * 60 * 60_000);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 86_400_000);
   if (/방금/.test(date)) return base;
+  // 일본어
+  match = date.match(/(\d+)\s*分前/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 60_000);
+  match = date.match(/(\d+)\s*時間前/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 3_600_000);
+  match = date.match(/(\d+)\s*日前/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 86_400_000);
+  if (/たった今|今/.test(date)) return base;
+  // 중국어 (번체/간체)
+  match = date.match(/(\d+)\s*分鐘前|(\d+)\s*分前/);
+  if (match) return new Date(base.getTime() - Number(match[1] || match[2]) * 60_000);
+  match = date.match(/(\d+)\s*小時前|(\d+)\s*小时前/);
+  if (match) return new Date(base.getTime() - Number(match[1] || match[2]) * 3_600_000);
+  match = date.match(/(\d+)\s*天前/);
+  if (match) return new Date(base.getTime() - Number(match[1]) * 86_400_000);
+  if (/剛剛|刚刚/.test(date)) return base;
 
   // 네이버 카페 형식: '2026. 06. 08. PM 02:16' or 'AM 11:05'
   match = date.match(/(20\d{2})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(AM|PM)\s+(\d{1,2}):(\d{2})/i);
