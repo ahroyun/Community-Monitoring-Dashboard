@@ -489,11 +489,10 @@ console.log(`✓ ${data.summary.totalPosts}개 게시글 저장 완료 (${new Da
 // history.json 누적 저장 (14일치 유지)
 
 const newPosts = results.flatMap((r) => r.posts);
-const existingIds = new Set(existing.map((p) => p.id));
-const merged = [
-  ...existing,
-  ...newPosts.filter((p) => !existingIds.has(p.id))
-];
+const mergedMap = new Map();
+for (const p of existing) mergedMap.set(p.id, p);
+for (const p of newPosts) mergedMap.set(p.id, p); // 재등장한 게시글은 최신 분류값으로 덮어쓰기
+const merged = [...mergedMap.values()];
 
 const cutoffDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 const cutoff = cutoffDate.toISOString();
