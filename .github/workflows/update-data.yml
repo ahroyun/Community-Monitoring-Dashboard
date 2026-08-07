@@ -19,6 +19,8 @@ jobs:
           node-version: '22'
 
       - name: Fetch community data
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node scripts/fetch-data.js
 
       - name: Commit data.json
