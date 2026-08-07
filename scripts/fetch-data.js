@@ -167,7 +167,7 @@ function scoreSentiment(title) {
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-async function classifySentimentBatch(posts) {
+async function classifySentimentBatch(posts, retryOn429 = true) {
   if (!GEMINI_API_KEY || posts.length === 0) return {};
   const numbered = posts.map((p, i) => `${i}. ${p.title}`).join("\n");
   const prompt = `다음은 게임 커뮤니티 게시글 제목입니다. 각 제목의 감성을 positive(호평/칭찬), negative(불만/비판/버그제보), neutral(정보성/질문/중립) 중 하나로 분류하세요.
@@ -183,7 +183,13 @@ ${numbered}
     { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 4096 } }) }
   );
+
+  if (res.status === 429 && retryOn429) {
+    await new Promise((r) => setTimeout(r, 5000));
+    return classifySentimentBatch(posts, false);
+  }
   if (!res.ok) throw new Error(`Gemini 감성분류 실패 (${res.status})`);
+
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
   const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
@@ -449,24 +455,27 @@ const needsClassification = [...idToPost.values()].filter(
 );
 
 if (needsClassification.length > 0) {
-  try {
-    for (let i = 0; i < needsClassification.length; i += 25) {
-      const batch = needsClassification.slice(i, i + 25);
+  let successCount = 0;
+  for (let i = 0; i < needsClassification.length; i += 25) {
+    const batch = needsClassification.slice(i, i + 25);
+    try {
       const classified = await classifySentimentBatch(batch);
       for (const post of batch) {
         if (classified[post.id]) {
           post.sentiment = classified[post.id];
           post.sentimentSource = "llm";
+          successCount++;
         } else {
           post.sentimentRetry += 1;
         }
       }
+    } catch (err) {
+      console.warn(`⚠ 배치 실패, 다음 사이클에 재시도: ${err.message}`);
+      for (const post of batch) post.sentimentRetry += 1;
     }
-    console.log(`✓ LLM 감성분류 완료 (${needsClassification.length}건 시도)`);
-  } catch (err) {
-    console.warn(`⚠ LLM 감성분류 실패: ${err.message}`);
-    for (const post of needsClassification) post.sentimentRetry += 1;
+    await new Promise((r) => setTimeout(r, 1500));
   }
+  console.log(`✓ LLM 감성분류: ${successCount}/${needsClassification.length}건 성공`);
 }
 
 for (const post of idToPost.values()) {
@@ -513,4 +522,5 @@ const trimmed = merged.filter((p) => {
 });
 
 await writeFile(historyPath, JSON.stringify({ updatedAt: new Date().toISOString(), posts: trimmed }));
+const existingIds = new Set(existing.map((p) => p.id)); // 로그용
 console.log(`✓ history.json: 총 ${trimmed.length}개 (신규 ${newPosts.filter((p) => !existingIds.has(p.id)).length}개 추가)`);
