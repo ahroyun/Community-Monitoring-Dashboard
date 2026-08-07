@@ -165,6 +165,37 @@ function scoreSentiment(title) {
   return "neutral";
 }
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+async function classifySentimentBatch(posts) {
+  if (!GEMINI_API_KEY || posts.length === 0) return {};
+  const numbered = posts.map((p, i) => `${i}. ${p.title}`).join("\n");
+  const prompt = `다음은 게임 커뮤니티 게시글 제목입니다. 각 제목의 감성을 positive(호평/칭찬), negative(불만/비판/버그제보), neutral(정보성/질문/중립) 중 하나로 분류하세요.
+반어법이나 은어(예: "혜자"=긍정, "망겜"=부정)에 주의하세요.
+
+${numbered}
+
+아래 형식의 JSON 배열만 출력하세요.
+[{"i":0,"sentiment":"positive"},{"i":1,"sentiment":"neutral"}]`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+    { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 4096 } }) }
+  );
+  if (!res.ok) throw new Error(`Gemini 감성분류 실패 (${res.status})`);
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+  const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+  const result = {};
+  for (const item of parsed) {
+    if (posts[item.i] && ["positive", "negative", "neutral"].includes(item.sentiment)) {
+      result[posts[item.i].id] = item.sentiment;
+    }
+  }
+  return result;
+}
+
 function extractBadges(title) {
   return watchWords.filter((word) => title.includes(word)).slice(0, 4);
 }
@@ -183,6 +214,8 @@ function makePost(source, title, url, author = "", date = "", views = "", commen
     views,
     comments,
     sentiment: scoreSentiment(title),
+    sentimentSource: "keyword",
+    sentimentRetry: 0,
     badges: extractBadges(title),
     fetchedAt: new Date().toISOString()
   };
@@ -388,6 +421,60 @@ function summarize(results) {
 }
 
 const results = await Promise.all(sources.map(fetchSource));
+
+const historyPath = join(__dirname, "../history.json");
+let existing = [];
+try {
+  const raw = await readFile(historyPath, "utf-8");
+  existing = JSON.parse(raw).posts || [];
+} catch {}
+
+const idToPost = new Map();
+for (const r of results) for (const p of r.posts) idToPost.set(p.id, p);
+
+const historyMap = new Map(existing.map((p) => [p.id, p]));
+for (const [id, post] of idToPost) {
+  const prev = historyMap.get(id);
+  if (prev && prev.sentimentSource === "llm") {
+    post.sentiment = prev.sentiment;
+    post.sentimentSource = "llm";
+    post.sentimentRetry = prev.sentimentRetry || 0;
+  } else if (prev) {
+    post.sentimentRetry = prev.sentimentRetry || 0;
+  }
+}
+
+const needsClassification = [...idToPost.values()].filter(
+  (p) => p.sentimentSource !== "llm" && p.sentimentRetry < 3
+);
+
+if (needsClassification.length > 0) {
+  try {
+    for (let i = 0; i < needsClassification.length; i += 25) {
+      const batch = needsClassification.slice(i, i + 25);
+      const classified = await classifySentimentBatch(batch);
+      for (const post of batch) {
+        if (classified[post.id]) {
+          post.sentiment = classified[post.id];
+          post.sentimentSource = "llm";
+        } else {
+          post.sentimentRetry += 1;
+        }
+      }
+    }
+    console.log(`✓ LLM 감성분류 완료 (${needsClassification.length}건 시도)`);
+  } catch (err) {
+    console.warn(`⚠ LLM 감성분류 실패: ${err.message}`);
+    for (const post of needsClassification) post.sentimentRetry += 1;
+  }
+}
+
+for (const post of idToPost.values()) {
+  if (post.sentimentRetry >= 3 && post.sentimentSource !== "llm") {
+    post.sentimentSource = "keyword_final";
+  }
+}
+
 const data = {
   generatedAt: new Date().toISOString(),
   sources,
@@ -400,14 +487,6 @@ await writeFile(outPath, JSON.stringify(data));
 console.log(`✓ ${data.summary.totalPosts}개 게시글 저장 완료 (${new Date().toLocaleTimeString("ko-KR")})`);
 
 // history.json 누적 저장 (14일치 유지)
-const historyPath = join(__dirname, "../history.json");
-let existing = [];
-try {
-  const raw = await readFile(historyPath, "utf-8");
-  existing = JSON.parse(raw).posts || [];
-} catch {
-  // 파일 없으면 빈 배열로 시작
-}
 
 const newPosts = results.flatMap((r) => r.posts);
 const existingIds = new Set(existing.map((p) => p.id));
