@@ -769,123 +769,166 @@ function renderCurrentIssues(reviews) {
   }).join("");
 }
 
-function renderPatchImpact(reviews, patches) {
-  const WINDOW = 7;
-  const MIN_REVIEWS = 3;
-  const impactEl = document.querySelector("#reviewPatchImpact");
+function renderTrendAnalysis(reviews) {
+  const WEEKS = 13; // ~3개월
+  const todayDate = new Date();
+  const trendEl = document.querySelector("#reviewPatchImpact");
 
-  const scopedPatches = patches
-    .filter((p) => state.reviewGame === ALL || p.game === state.reviewGame)
-    .sort((a, b) => ((b.date || "") > (a.date || "") ? 1 : -1));
+  const weeks = Array.from({ length: WEEKS }, (_, i) => {
+    const endDate = new Date(todayDate);
+    endDate.setDate(endDate.getDate() - (WEEKS - 1 - i) * 7);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 6);
+    return {
+      label: `${String(startDate.getMonth() + 1).padStart(2, "0")}/${String(startDate.getDate()).padStart(2, "0")}`,
+      start: startDate.toISOString().slice(0, 10),
+      end: endDate.toISOString().slice(0, 10)
+    };
+  });
 
-  if (!scopedPatches.length) {
-    impactEl.innerHTML = `<div class="review-empty">패치 데이터가 없습니다.<br>"Update Store Reviews" 워크플로우를 실행하면 자동으로 수집됩니다.</div>`;
+  const games = state.reviewGame === ALL
+    ? ["대항해시대 오리진", "언디셈버", "창세기전 모바일"]
+    : [state.reviewGame];
+
+  const gameData = games.map((game) => {
+    const gr = reviews.filter((r) => r.game === game);
+    const weekly = weeks.map(({ start, end }) => {
+      const wr = gr.filter((r) => r.date >= start && r.date <= end);
+      if (!wr.length) return null;
+      const neg = wr.filter((r) => reviewSentiment(r) === "negative");
+      return { negRate: neg.length / wr.length, total: wr.length, negCount: neg.length };
+    });
+    return { game, weekly };
+  });
+
+  const hasAnyData = gameData.some(({ weekly }) => weekly.some(Boolean));
+  if (!hasAnyData) {
+    trendEl.innerHTML = `<div class="review-empty">리뷰 날짜 데이터가 부족합니다.<br>워크플로우 실행 후 며칠 지나면 트렌드가 쌓입니다.</div>`;
     return;
   }
 
-  impactEl.innerHTML = scopedPatches.map((patch, patchIdx) => {
-    const patchDate = patch.date || "";
-    const beforeStart = dateDelta(patchDate, -WINDOW);
-    const afterEnd = dateDelta(patchDate, WINDOW);
-    const gameRevs = reviews.filter((r) => r.game === patch.game);
-    const before = gameRevs.filter((r) => r.date >= beforeStart && r.date < patchDate);
-    const after = gameRevs.filter((r) => r.date >= patchDate && r.date <= afterEnd);
+  // 스파이크 감지: mean + 1.5σ, 절대 최소 30%
+  function detectSpikes(weekly) {
+    const valid = weekly.filter(Boolean);
+    if (valid.length < 4) return weekly.map(() => false);
+    const rates = valid.map((w) => w.negRate);
+    const mean = rates.reduce((s, v) => s + v, 0) / rates.length;
+    const std = Math.sqrt(rates.reduce((s, v) => s + (v - mean) ** 2, 0) / rates.length);
+    const threshold = Math.max(0.30, mean + 1.5 * std);
+    return weekly.map((w) => w !== null && w.negRate >= threshold);
+  }
 
-    const color = GAME_COLORS[patch.game] || "#888";
-    const gameShort = patch.game.replace(" 오리진", "").replace(" 모바일", "");
-    const lacksData = before.length < MIN_REVIEWS || after.length < MIN_REVIEWS;
+  const spikeFlagsList = gameData.map((gd) => detectSpikes(gd.weekly));
 
-    const beforeNeg = before.filter((r) => reviewSentiment(r) === "negative");
-    const afterNeg = after.filter((r) => reviewSentiment(r) === "negative");
-    const beforeNegRate = before.length ? beforeNeg.length / before.length : 0;
-    const afterNegRate = after.length ? afterNeg.length / after.length : 0;
-    const beforeAvg = before.length ? before.reduce((s, r) => s + r.rating, 0) / before.length : 0;
-    const afterAvg = after.length ? after.reduce((s, r) => s + r.rating, 0) / after.length : 0;
-    const negDelta = afterNegRate - beforeNegRate;
-    const ratingDelta = afterAvg - beforeAvg;
+  // ── SVG 라인 차트 ──────────────────────────────────
+  const W = 680, H = 200, PL = 36, PR = 12, PT = 20, PB = 44;
+  const iW = W - PL - PR, iH = H - PT - PB;
+  const xPos = (wi) => PL + (wi / (WEEKS - 1)) * iW;
+  const yPos = (r) => PT + iH * (1 - Math.min(1, r));
 
-    let impact = "neutral";
-    if (!lacksData) {
-      if (negDelta < -0.05) impact = "improved";
-      else if (negDelta > 0.05) impact = "worsened";
-    }
-
-    const impactBadge = lacksData
-      ? `<span class="impact-badge neutral">데이터 부족</span>`
-      : impact === "improved"
-        ? `<span class="impact-badge improved">▲ 개선</span>`
-        : impact === "worsened"
-          ? `<span class="impact-badge worsened">▼ 악화</span>`
-          : `<span class="impact-badge neutral">─ 변화없음</span>`;
-
-    const beforeTopics = topTopics(beforeNeg);
-    const afterTopics = topTopics(afterNeg);
-
-    const afterExamples = afterNeg
-      .sort((a, b) => ((b.date || "") > (a.date || "") ? 1 : -1))
-      .slice(0, 5);
-
-    const reviewListHtml = afterExamples.length
-      ? afterExamples.map((r) => {
-          const label = STORE_LABELS[r.store] || r.store;
-          const text = ((r.title ? r.title + "  " : "") + r.content).slice(0, 100);
-          const stars = r.store === "steam" ? (r.rating >= 4 ? "👍" : "👎") : `★${r.rating}`;
-          return `<div class="patch-review-item">
-            <span class="patch-review-meta">${escapeHtml(label)} · ${escapeHtml(r.date || "")} · ${stars}</span>
-            <span class="patch-review-text">"${escapeHtml(text)}${text.length >= 100 ? "…" : ""}"</span>
-          </div>`;
-        }).join("")
-      : `<div class="hint" style="padding:8px 0">패치 직후 부정 리뷰 없음</div>`;
-
-    const compareHtml = lacksData
-      ? `<p class="hint" style="margin:8px 0 0">패치 전후 ${WINDOW}일 이내 리뷰가 ${MIN_REVIEWS}건 미만입니다 (전: ${before.length}건, 후: ${after.length}건).</p>`
-      : `<div class="patch-compare">
-          <div class="patch-window">
-            <div class="patch-window-label">패치 전 ${WINDOW}일 <span class="hint">(${before.length}건)</span></div>
-            <div class="patch-metric">
-              <span class="patch-metric-val">${(beforeNegRate * 100).toFixed(0)}%</span>
-              <span class="patch-metric-label">부정률</span>
-            </div>
-            <div class="patch-metric">
-              <span class="patch-metric-val">${beforeAvg.toFixed(1)}</span>
-              <span class="patch-metric-label">평균★</span>
-            </div>
-            ${beforeTopics.length ? `<div class="patch-topics">주요불만: ${beforeTopics.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}
-          </div>
-          <div class="patch-arrow">→</div>
-          <div class="patch-window">
-            <div class="patch-window-label">패치 후 ${WINDOW}일 <span class="hint">(${after.length}건)</span></div>
-            <div class="patch-metric">
-              <span class="patch-metric-val ${negDelta > 0.05 ? "worse" : negDelta < -0.05 ? "better" : ""}">${(afterNegRate * 100).toFixed(0)}%</span>
-              <span class="patch-metric-label">부정률</span>
-              <span class="patch-metric-delta ${negDelta > 0 ? "worse" : negDelta < 0 ? "better" : ""}">${negDelta > 0 ? "+" : ""}${(negDelta * 100).toFixed(0)}%p</span>
-            </div>
-            <div class="patch-metric">
-              <span class="patch-metric-val">${afterAvg.toFixed(1)}</span>
-              <span class="patch-metric-label">평균★</span>
-              <span class="patch-metric-delta ${ratingDelta > 0 ? "better" : ratingDelta < 0 ? "worse" : ""}">${ratingDelta > 0 ? "+" : ""}${ratingDelta.toFixed(1)}</span>
-            </div>
-            ${afterTopics.length ? `<div class="patch-topics">주요불만: ${afterTopics.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}
-          </div>
-        </div>
-        <details class="patch-reviews-toggle">
-          <summary>패치 직후 부정 리뷰 ${afterExamples.length}건</summary>
-          <div class="patch-reviews-list">${reviewListHtml}</div>
-        </details>`;
-
-    return `<div class="patch-card ${impact}">
-      <div class="patch-card-head">
-        <div class="patch-card-title">
-          <span class="patch-dot" style="background:${color}"></span>
-          <span class="patch-game" style="color:${color}">${escapeHtml(gameShort)}</span>
-          <span class="patch-title-text">${escapeHtml(patch.title)}</span>
-          <span class="patch-date">${escapeHtml(patchDate)}</span>
-        </div>
-        ${impactBadge}
-      </div>
-      ${compareHtml}
-    </div>`;
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((t) => {
+    const y = PT + iH * (1 - t);
+    return `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>
+    <text x="${PL - 4}" y="${y + 4}" text-anchor="end" font-size="10" fill="#aaa">${Math.round(t * 100)}%</text>`;
   }).join("");
+
+  const chartLines = gameData.map(({ game, weekly }, gi) => {
+    const color = GAME_COLORS[game] || "#888";
+    const spikes = spikeFlagsList[gi];
+    let d = "", open = false;
+    for (let wi = 0; wi < WEEKS; wi++) {
+      if (weekly[wi]) {
+        const px = xPos(wi), py = yPos(weekly[wi].negRate);
+        d += open ? ` L ${px} ${py}` : `M ${px} ${py}`;
+        open = true;
+      } else {
+        open = false;
+      }
+    }
+    const dots = weekly.map((w, wi) => {
+      if (!w) return "";
+      const isSpike = spikes[wi];
+      return `<circle cx="${xPos(wi)}" cy="${yPos(w.negRate)}" r="${isSpike ? 5 : 3}"
+        fill="${isSpike ? "#dc2626" : color}" stroke="#fff" stroke-width="1.5">
+        <title>${game} ${weeks[wi].label}주: 부정률 ${(w.negRate * 100).toFixed(0)}% (${w.total}건 중 ${w.negCount}건)</title>
+      </circle>`;
+    }).join("");
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="2" opacity="0.85"/>${dots}`;
+  }).join("");
+
+  const xLabels = weeks.map(({ label }, wi) =>
+    wi % 2 === 0
+      ? `<text x="${xPos(wi)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#aaa">${label}</text>`
+      : ""
+  ).join("");
+
+  const legendHtml = games.map((game) => {
+    const color = GAME_COLORS[game] || "#888";
+    return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:12px;">
+      <span style="width:20px;height:2.5px;background:${color};display:inline-block;border-radius:2px;"></span>${escapeHtml(game)}
+    </span>`;
+  }).join("");
+
+  // ── 스파이크 카드 ──────────────────────────────────
+  const allSpikes = [];
+  gameData.forEach(({ game, weekly }, gi) => {
+    weeks.forEach(({ label, start, end }, wi) => {
+      if (!spikeFlagsList[gi][wi] || !weekly[wi]) return;
+      const w = weekly[wi];
+      const negRevs = reviews.filter((r) =>
+        r.game === game && r.date >= start && r.date <= end && reviewSentiment(r) === "negative"
+      );
+      allSpikes.push({
+        game, label, negRate: w.negRate, total: w.total,
+        topics: topTopics(negRevs, 3),
+        examples: negRevs.sort((a, b) => ((b.date || "") > (a.date || "") ? 1 : -1)).slice(0, 2)
+      });
+    });
+  });
+  allSpikes.sort((a, b) => b.negRate - a.negRate);
+
+  const spikeHtml = allSpikes.length
+    ? `<div class="spike-cards">${allSpikes.map((spike) => {
+        const color = GAME_COLORS[spike.game] || "#888";
+        const gameShort = spike.game.replace(" 오리진", "").replace(" 모바일", "");
+        const exHtml = spike.examples.map((r) => {
+          const text = (r.title || r.content || "").slice(0, 65);
+          const stars = r.store === "steam" ? (r.rating >= 4 ? "👍" : "👎") : `★${r.rating}`;
+          return `<div class="spike-example">
+            <span class="spike-example-meta">${escapeHtml(STORE_LABELS[r.store] || r.store)} · ${escapeHtml(r.date || "")} · ${stars}</span>
+            <span class="spike-example-text">"${escapeHtml(text)}${text.length >= 65 ? "…" : ""}"</span>
+          </div>`;
+        }).join("");
+        return `<div class="spike-card">
+          <div class="spike-head">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="spike-week">${escapeHtml(spike.label)}주</span>
+              <span class="spike-game-label" style="color:${color}">${escapeHtml(gameShort)}</span>
+            </div>
+            <span class="spike-rate">${(spike.negRate * 100).toFixed(0)}<small>%</small></span>
+          </div>
+          ${spike.topics.length ? `<div class="spike-topics">${spike.topics.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+          ${exHtml}
+        </div>`;
+      }).join("")}</div>`
+    : `<p class="hint" style="margin-top:12px;">이상 스파이크 없음 (기준: 전체 평균 + 1.5σ 초과, 최소 부정률 30%)</p>`;
+
+  trendEl.innerHTML = `
+    <div class="trend-chart-wrap">
+      <div class="trend-legend">
+        ${legendHtml}
+        <span style="font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:4px;">
+          <span style="width:9px;height:9px;background:#dc2626;border-radius:50%;display:inline-block;"></span>스파이크
+        </span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block;overflow:visible">
+        ${grid}${chartLines}${xLabels}
+      </svg>
+      <p class="hint" style="margin-top:6px;">주별 부정률(%). 빨간 점 = 전체 평균 + 1.5σ 초과 구간.</p>
+    </div>
+    <h3 class="spike-section-title">스파이크 상세</h3>
+    ${spikeHtml}
+  `;
 }
 
 function renderReviews() {
@@ -935,7 +978,7 @@ function renderReviews() {
   });
 
   renderCurrentIssues(reviews);
-  renderPatchImpact(reviews, patches);
+  renderTrendAnalysis(reviews);
 }
 
 // ── 메인 탭 (피드 / AI 요약) ────────────────────────
