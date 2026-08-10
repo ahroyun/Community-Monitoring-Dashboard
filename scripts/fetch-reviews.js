@@ -38,7 +38,7 @@ async function fetchGooglePlay(game) {
       lang: "ko",
       country: "kr",
       sort: gplay.sort.NEWEST,
-      num: 200
+      num: 300
     });
     return (result.data || []).map((r) => ({
       id: makeId("gplay", r.id),
@@ -64,7 +64,7 @@ async function fetchGooglePlay(game) {
 async function fetchAppStore(game) {
   const reviews = [];
   try {
-    for (let page = 1; page <= 5; page++) {
+    for (let page = 1; page <= 10; page++) {
       const url = `https://itunes.apple.com/kr/rss/customerreviews/page=${page}/id=${game.appStoreId}/sortBy=mostRecent/json`;
       const res = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0" },
@@ -104,7 +104,7 @@ async function fetchSteam(game) {
   const reviews = [];
   try {
     let cursor = "*";
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const params = new URLSearchParams({
         json: "1",
         language: "koreana",
