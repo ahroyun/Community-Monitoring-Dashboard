@@ -123,19 +123,28 @@
       <div id="viewReviews" hidden>
         <section class="review-section">
           <div id="reviewGameFilter" class="review-game-filter"></div>
-          <div id="reviewRatingStrip" class="review-rating-strip"></div>
-          <div class="review-columns">
-            <div class="review-main">
-              <h2>부정 리뷰 트렌드 <span class="hint" style="font-weight:400;font-size:13px;">최근 30일</span></h2>
-              <div id="reviewTimeline" class="review-timeline"></div>
-              <h2 style="margin-top:28px;">토픽별 부정 리뷰</h2>
-              <div id="reviewTopicHeatmap" class="review-topic-heatmap"></div>
+
+          <!-- 섹션 1: 지금 뭐가 문제야? -->
+          <div class="review-block">
+            <div class="review-block-head">
+              <div>
+                <h2 style="margin:0">지금 뭐가 문제야?</h2>
+                <p class="hint" style="margin:4px 0 0">최근 N일 부정 리뷰 토픽 집계</p>
+              </div>
+              <div id="reviewPeriodFilter" class="review-period-filter"></div>
             </div>
-            <div class="review-side">
-              <h2>우선순위 티켓</h2>
-              <p class="hint">부정 리뷰 수 × 플레이타임 가중치 기준</p>
-              <div id="reviewTickets" class="review-tickets"></div>
+            <div id="reviewIssues" class="review-issues"></div>
+          </div>
+
+          <!-- 섹션 2: 패치 임팩트 -->
+          <div class="review-block">
+            <div class="review-block-head">
+              <div>
+                <h2 style="margin:0">패치 임팩트</h2>
+                <p class="hint" style="margin:4px 0 0">패치 전후 7일 리뷰 비교 · 부정률 기준</p>
+              </div>
             </div>
+            <div id="reviewPatchImpact" class="review-patch-impact"></div>
           </div>
         </section>
       </div>
