@@ -25,9 +25,9 @@ jobs:
         run: node scripts/fetch-reviews.js
 
       - name: Generate review summary
-        run: node scripts/generate-review-summary.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/generate-review-summary.js
 
       - name: Fetch patch notes
         run: node scripts/fetch-patches.js
