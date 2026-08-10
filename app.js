@@ -646,7 +646,23 @@ document.querySelectorAll(".date-btn").forEach((btn) => {
 
 // ── 스토어 리뷰 탭 ──────────────────────────────────
 const STORE_LABELS = { google_play: "Google Play", app_store: "App Store", steam: "Steam" };
-const STEAM_IDS = { "대항해시대 오리진": "1574360", "언디셈버": "1549250" };
+const STORE_URLS = {
+  "대항해시대 오리진": {
+    google_play: "https://play.google.com/store/apps/details?id=com.linegames.uwogl&hl=ko",
+    app_store:   "https://apps.apple.com/kr/app/%EB%8C%80%ED%95%AD%ED%95%B4%EC%8B%9C%EB%8C%80-%EC%98%A4%EB%A6%AC%EC%A7%84/id1660850121",
+    steam:       "https://steamcommunity.com/app/1574360/reviews/?browsefilter=mostrecent&p=1"
+  },
+  "언디셈버": {
+    google_play: "https://play.google.com/store/apps/details?id=com.linegames.udg&hl=ko",
+    app_store:   "https://apps.apple.com/kr/app/%EC%96%B8%EB%94%94%EC%85%88%EB%B2%84-%EB%8B%A8%EC%A1%B0/id6443444355",
+    steam:       "https://steamcommunity.com/app/1549250/reviews/?browsefilter=mostrecent&p=1"
+  },
+  "창세기전 모바일": {
+    google_play: "https://play.google.com/store/apps/details?id=com.linegames.gm&hl=ko",
+    app_store:   "https://apps.apple.com/kr/app/%EC%B0%BD%EC%84%B8%EA%B8%B0%EC%A0%84-%EB%AA%A8%EB%B0%94%EC%9D%BC-%EC%84%9C%ED%92%8D%EC%9D%98-%EA%B4%91%EC%8B%9C%EA%B3%A1/id6450174109",
+    steam:       null
+  }
+};
 
 function reviewSentiment(review) {
   if (review.store === "steam") return review.rating >= 4 ? "positive" : "negative";
@@ -716,14 +732,12 @@ function renderReviews() {
       r.version ? `v${r.version}` : ""
     ].filter(Boolean).join(" · ");
 
-    const steamId = STEAM_IDS[r.game];
-    const steamUrl = steamId
-      ? `https://steamcommunity.com/app/${steamId}/reviews/?browsefilter=mostrecent&p=1`
-      : null;
+    const storeUrl = STORE_URLS[r.game]?.[r.store];
     const badgeClass = STORE_BADGE_CLASS[r.store] || "";
-    const storeBadge = r.store === "steam" && steamUrl
-      ? `<a class="store-badge ${badgeClass}" href="${steamUrl}" target="_blank" rel="noreferrer">Steam ↗</a>`
-      : `<span class="store-badge ${badgeClass}">${escapeHtml(STORE_LABELS[r.store] || r.store)}</span>`;
+    const storeLabel = STORE_LABELS[r.store] || r.store;
+    const storeBadge = storeUrl
+      ? `<a class="store-badge ${badgeClass}" href="${storeUrl}" target="_blank" rel="noreferrer">${escapeHtml(storeLabel)} ↗</a>`
+      : `<span class="store-badge ${badgeClass}">${escapeHtml(storeLabel)}</span>`;
 
     return `<div class="review-card">
       <div class="review-card-row">
