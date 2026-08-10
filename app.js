@@ -11,6 +11,7 @@ const state = {
   history: null,
   summary: null,
   reviews: null,
+  reviewSummary: null,
   patches: null,
   summaryPeriod: "daily",
   reviewSentiment: "all",
@@ -645,6 +646,10 @@ document.querySelectorAll(".date-btn").forEach((btn) => {
 });
 
 // ── 스토어 리뷰 탭 ──────────────────────────────────
+// 30일 cutoff
+function get30DayCutoff() {
+  return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
 const STORE_LABELS = { google_play: "Google Play", app_store: "App Store", steam: "Steam" };
 const STORE_URLS = {
   "대항해시대 오리진": {
@@ -671,6 +676,58 @@ function reviewSentiment(review) {
   return "neutral";
 }
 
+// ── 리뷰 요약 패널 렌더링 ────────────────────────────
+function renderReviewSummary() {
+  const el = document.querySelector("#reviewSummaryContent");
+  const metaEl = document.querySelector("#reviewSummaryMeta");
+  const s = state.reviewSummary;
+
+  if (!s) {
+    el.innerHTML = `<div class="review-summary-empty">요약 데이터 없음<br><small>워크플로우 실행 후 생성됩니다</small></div>`;
+    return;
+  }
+
+  metaEl.textContent = `${s.from} ~ ${s.to}`;
+
+  const games = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
+  const targetGames = state.reviewGame === ALL ? games : [state.reviewGame];
+
+  el.innerHTML = targetGames.map((game) => {
+    const data = s.summaries?.find(x => x.game === game);
+    if (!data) return "";
+    const color = GAME_COLORS[game] || "#888";
+    const total = data.reviewCount || 0;
+    const posRate = total > 0 ? Math.round((data.posCount / total) * 100) : 0;
+
+    const urgentBadge = data.urgent
+      ? `<div class="review-summary-urgent">⚠️ ${escapeHtml(data.urgent)}</div>`
+      : "";
+
+    return `<div class="review-summary-card">
+      <div class="review-summary-game" style="color:${color}">● ${escapeHtml(game)}</div>
+      <div class="review-summary-stats">
+        <span class="review-summary-count">${total}건</span>
+        <span class="review-summary-bar-wrap">
+          <span class="review-summary-bar" style="width:${posRate}%"></span>
+        </span>
+        <span class="review-summary-pos">${data.posCount}긍</span>
+        <span class="review-summary-neg">${data.negCount}부</span>
+      </div>
+      ${urgentBadge}
+      ${data.positive ? `<div class="review-summary-row pos">
+        <span class="review-summary-label pos">긍정</span>
+        <span>${escapeHtml(data.positive)}</span>
+      </div>` : ""}
+      ${data.negative ? `<div class="review-summary-row neg">
+        <span class="review-summary-label neg">부정</span>
+        <span>${escapeHtml(data.negative)}</span>
+      </div>` : ""}
+      ${!data.positive && !data.negative ? `<div class="review-summary-empty-small">리뷰 없음</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+// ── 리뷰 피드 렌더링 ─────────────────────────────────
 function renderReviews() {
   const allReviews = state.reviews?.reviews || [];
   const games = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
@@ -687,7 +744,11 @@ function renderReviews() {
     </button>`;
   }).join("");
   filterEl.querySelectorAll("button").forEach((btn) => {
-    btn.addEventListener("click", () => { state.reviewGame = btn.dataset.game; renderReviews(); });
+    btn.addEventListener("click", () => {
+      state.reviewGame = btn.dataset.game;
+      renderReviewSummary();
+      renderReviews();
+    });
   });
 
   // ── 감성 필터 ─────────────────────────────────────
@@ -706,22 +767,27 @@ function renderReviews() {
   }
 
   // ── 필터 + 정렬 ───────────────────────────────────
+  const cutoff = get30DayCutoff();
   let reviews = state.reviewGame === ALL ? allReviews : allReviews.filter((r) => r.game === state.reviewGame);
   if (state.reviewSentiment !== "all") {
     reviews = reviews.filter((r) => reviewSentiment(r) === state.reviewSentiment);
   }
-  reviews = [...reviews].sort((a, b) => ((b.date || "") > (a.date || "") ? 1 : -1)).slice(0, 120);
+  reviews = [...reviews].sort((a, b) => ((b.date || "") > (a.date || "") ? 1 : -1)).slice(0, 150);
 
   if (!reviews.length) {
     feedEl.innerHTML = `<div class="review-empty">조건에 맞는 리뷰가 없습니다.</div>`;
     return;
   }
 
+  // ── 30일 기준 분리 ────────────────────────────────
+  const recent = reviews.filter(r => r.date >= cutoff);
+  const older  = reviews.filter(r => r.date < cutoff);
+
   // ── 카드 렌더링 ───────────────────────────────────
   const SENT_LABEL = { positive: "긍정", negative: "부정", neutral: "중립" };
   const STORE_BADGE_CLASS = { google_play: "gplay", app_store: "appstore", steam: "steam" };
 
-  feedEl.innerHTML = reviews.map((r) => {
+  function renderCard(r) {
     const sent = reviewSentiment(r);
     const color = GAME_COLORS[r.game] || "#888";
     const stars = r.store === "steam" ? (r.rating >= 4 ? "👍 추천" : "👎 비추천") : `★${r.rating}`;
@@ -749,7 +815,18 @@ function renderReviews() {
       <div class="review-card-body">${escapeHtml(body)}</div>
       ${metaParts ? `<div class="review-card-meta">${metaParts}</div>` : ""}
     </div>`;
-  }).join("");
+  }
+
+  let html = "";
+  if (recent.length) {
+    html += `<div class="review-section-divider recent">최근 30일 <span>${recent.length}개</span></div>`;
+    html += recent.map(renderCard).join("");
+  }
+  if (older.length) {
+    html += `<div class="review-section-divider older">이전 리뷰 <span>${older.length}개</span></div>`;
+    html += older.map(renderCard).join("");
+  }
+  feedEl.innerHTML = html;
 }
 
 // ── 메인 탭 (피드 / AI 요약) ────────────────────────
@@ -852,11 +929,14 @@ document.querySelectorAll(".main-tab").forEach((btn) => {
     if (state.view === "reviews") {
       if (!state.reviews) {
         document.querySelector("#reviewFeed").innerHTML = `<div class="review-empty">리뷰 불러오는 중...</div>`;
-        [state.reviews, state.patches] = await Promise.all([
+        document.querySelector("#reviewSummaryContent").innerHTML = `<div class="review-summary-empty">불러오는 중...</div>`;
+        [state.reviews, state.reviewSummary, state.patches] = await Promise.all([
           fetchJson("reviews.json").catch(() => null),
+          fetchJson("review-summary.json").catch(() => null),
           fetchJson("patches.json").catch(() => null)
         ]);
       }
+      renderReviewSummary();
       renderReviews();
     }
   });
