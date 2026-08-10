@@ -169,8 +169,8 @@ for (const game of GAMES) {
   newReviews.push(...fresh);
 }
 
-// 90일치만 유지
-const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+// 1년치 유지
+const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const merged = [...existing, ...newReviews].filter((r) => !r.date || r.date >= cutoff);
 
 await writeFile(reviewsPath, JSON.stringify({ generatedAt: new Date().toISOString(), reviews: merged }));
