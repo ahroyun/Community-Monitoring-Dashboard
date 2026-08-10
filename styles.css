@@ -913,10 +913,10 @@ button:hover {
   }
 }
 
-/* ── 스토어 리뷰 탭 ───────────────────────────────── */
+/* ── 스토어 리뷰 탭 (재설계) ─────────────────────── */
 .review-section {
   padding: 24px 28px;
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -928,170 +928,345 @@ button:hover {
   line-height: 1.8;
 }
 
-/* 평점 카드 스트립 */
-.review-rating-strip {
+.review-game-filter {
   display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
   flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 
-.review-rating-card {
-  flex: 1;
-  min-width: 240px;
+/* 섹션 블록 */
+.review-block {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px 20px;
+  padding: 22px 24px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow);
 }
 
-.review-card-game {
+.review-block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+/* 기간 필터 버튼 */
+.review-period-filter {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.period-btn {
+  padding: 4px 13px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+
+.period-btn.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  font-weight: 700;
+}
+
+.period-btn:hover:not(.active) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* 현재이슈 카드 그리드 */
+.review-issues {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 13px;
+}
+
+.issue-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 15px;
+}
+
+.issue-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.issue-topic {
   font-weight: 700;
   font-size: 14px;
-  margin-bottom: 12px;
 }
 
-.review-store-badge {
+.issue-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.issue-count {
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.issue-trend {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.issue-trend.up   { color: var(--danger); }
+.issue-trend.down { color: var(--good); }
+.issue-trend.flat { color: var(--muted); }
+
+.issue-example {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+
+.issue-example-meta {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.issue-example-text {
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 패치 임팩트 카드 */
+.review-patch-impact {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.patch-card {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 10px;
+  padding: 15px 18px;
+  background: var(--panel);
+}
+
+.patch-card.improved { border-left-color: var(--good); }
+.patch-card.worsened { border-left-color: var(--danger); }
+.patch-card.neutral  { border-left-color: var(--line); }
+
+.patch-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+  flex-wrap: wrap;
+}
+
+.patch-card-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
-  font-size: 13px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
-.store-dot {
+.patch-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.store-bar-track {
-  flex: 1;
-  height: 4px;
-  background: var(--line);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.store-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s ease;
-}
-
-.store-count {
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-/* 컬럼 레이아웃 */
-.review-columns {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 28px;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .review-columns { grid-template-columns: 1fr; }
-}
-
-.review-timeline svg {
-  overflow: visible;
-}
-
-/* 토픽 히트맵 */
-.review-topic-heatmap {
-  overflow-x: auto;
-  margin-top: 8px;
-}
-
-.review-topic-heatmap .heatmap-table td {
-  min-width: 52px;
-  text-align: center;
+.patch-game {
+  font-weight: 700;
   font-size: 13px;
-  padding: 8px 6px;
-  border-radius: 4px;
+  flex-shrink: 0;
 }
 
-/* 우선순위 티켓 */
-.review-tickets {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.patch-title-text {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
 }
 
-.review-ticket {
-  display: flex;
-  gap: 12px;
+.patch-date {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* 임팩트 뱃지 */
+.impact-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.impact-badge.improved { background: #dcfce7; color: #166534; }
+.impact-badge.worsened { background: #fee2e2; color: #991b1b; }
+.impact-badge.neutral  { background: var(--line); color: var(--muted); }
+
+/* 패치 비교 레이아웃 */
+.patch-compare {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr;
+  gap: 0;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.patch-arrow {
+  text-align: center;
+  color: var(--muted);
+  padding-top: 30px;
+  font-size: 16px;
+}
+
+.patch-window {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 8px;
+  padding: 11px 13px;
 }
 
-.ticket-rank {
+.patch-window-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.patch-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.patch-metric-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.patch-metric-val.worse  { color: var(--danger); }
+.patch-metric-val.better { color: var(--good); }
+
+.patch-metric-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.patch-metric-delta {
   font-size: 12px;
   font-weight: 700;
-  color: var(--muted);
-  width: 24px;
-  flex-shrink: 0;
-  padding-top: 2px;
 }
 
-.ticket-body {
-  flex: 1;
-  min-width: 0;
-}
+.patch-metric-delta.worse  { color: var(--danger); }
+.patch-metric-delta.better { color: var(--good); }
 
-.ticket-top {
+.patch-topics {
+  margin-top: 9px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 4px;
   flex-wrap: wrap;
-}
-
-.ticket-topic {
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.ticket-game {
   font-size: 12px;
+  color: var(--muted);
+}
+
+.patch-topics span {
+  background: var(--line);
+  border-radius: 4px;
+  padding: 2px 7px;
+  color: var(--ink);
   font-weight: 600;
-}
-
-.ticket-meta {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.ticket-example {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-style: italic;
-  margin-top: 4px;
-}
-
-.ticket-example-meta {
-  font-style: normal;
-  font-weight: 600;
-  color: var(--muted);
-  margin-right: 4px;
   font-size: 11px;
 }
 
-/* 리뷰 게임 필터 */
-.review-game-filter {
+/* 패치 리뷰 토글 */
+.patch-reviews-toggle {
+  margin-top: 10px;
+}
+
+.patch-reviews-toggle > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  user-select: none;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.patch-reviews-toggle > summary::-webkit-details-marker { display: none; }
+.patch-reviews-toggle > summary::before { content: "▸ "; font-size: 10px; }
+.patch-reviews-toggle[open] > summary::before { content: "▾ "; }
+
+.patch-reviews-list {
+  margin-top: 10px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.patch-review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.patch-review-meta {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.patch-review-text {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .patch-compare { grid-template-columns: 1fr; }
+  .patch-arrow { display: none; }
+  .review-issues { grid-template-columns: 1fr; }
 }
