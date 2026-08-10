@@ -646,6 +646,7 @@ document.querySelectorAll(".date-btn").forEach((btn) => {
 
 // ── 스토어 리뷰 탭 ──────────────────────────────────
 const STORE_LABELS = { google_play: "Google Play", app_store: "App Store", steam: "Steam" };
+const STEAM_IDS = { "대항해시대 오리진": "1574360", "언디셈버": "1549250" };
 
 function reviewSentiment(review) {
   if (review.store === "steam") return review.rating >= 4 ? "positive" : "negative";
@@ -702,21 +703,33 @@ function renderReviews() {
 
   // ── 카드 렌더링 ───────────────────────────────────
   const SENT_LABEL = { positive: "긍정", negative: "부정", neutral: "중립" };
+  const STORE_BADGE_CLASS = { google_play: "gplay", app_store: "appstore", steam: "steam" };
+
   feedEl.innerHTML = reviews.map((r) => {
     const sent = reviewSentiment(r);
     const color = GAME_COLORS[r.game] || "#888";
     const stars = r.store === "steam" ? (r.rating >= 4 ? "👍 추천" : "👎 비추천") : `★${r.rating}`;
-    const storeLabel = STORE_LABELS[r.store] || r.store;
     const body = r.title ? `[${r.title}]  ${r.content}` : r.content;
     const metaParts = [
       r.author ? escapeHtml(r.author) : "",
       r.playtime ? `플레이 ${r.playtime}시간` : "",
       r.version ? `v${r.version}` : ""
     ].filter(Boolean).join(" · ");
+
+    const steamId = STEAM_IDS[r.game];
+    const steamUrl = steamId
+      ? `https://steamcommunity.com/app/${steamId}/reviews/?browsefilter=mostrecent&p=1`
+      : null;
+    const badgeClass = STORE_BADGE_CLASS[r.store] || "";
+    const storeBadge = r.store === "steam" && steamUrl
+      ? `<a class="store-badge ${badgeClass}" href="${steamUrl}" target="_blank" rel="noreferrer">Steam ↗</a>`
+      : `<span class="store-badge ${badgeClass}">${escapeHtml(STORE_LABELS[r.store] || r.store)}</span>`;
+
     return `<div class="review-card">
       <div class="review-card-row">
         <span class="review-card-game" style="color:${color}">● ${escapeHtml(r.game)}</span>
-        <span class="review-card-store-date">${escapeHtml(storeLabel)} · ${escapeHtml(r.date || "")} · ${stars}</span>
+        ${storeBadge}
+        <span class="review-card-date">${escapeHtml(r.date || "")} · ${stars}</span>
         <span class="review-sent-badge ${sent}">${SENT_LABEL[sent]}</span>
       </div>
       <div class="review-card-body">${escapeHtml(body)}</div>
