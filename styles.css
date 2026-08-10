@@ -1017,7 +1017,8 @@ button:hover {
 .store-badge.appstore { background: #f3f4f6; color: #374151; }
 .store-badge.steam    { background: #1b2838; color: #c6d4df; }
 
-a.store-badge.steam:hover { background: #2a475e; }
+a.store-badge:hover          { opacity: 0.8; }
+a.store-badge.steam:hover   { background: #2a475e; opacity: 1; }
 
 .review-sent-badge {
   padding: 2px 9px;
