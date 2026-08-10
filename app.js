@@ -10,6 +10,8 @@ const state = {
   data: null,
   history: null,
   summary: null,
+  reviews: null,
+  patches: null,
   summaryPeriod: "daily",
   view: "feed",
   game: ALL,
@@ -640,9 +642,211 @@ document.querySelectorAll(".date-btn").forEach((btn) => {
   });
 });
 
+// ── 스토어 리뷰 탭 ──────────────────────────────────
+const REVIEW_TOPICS = {
+  "버그/오류":  ["버그", "오류", "에러", "튕김", "크래시", "충돌", "먹통", "bug", "error", "crash", "バグ", "エラー", "錯誤"],
+  "밸런스":    ["밸런스", "너프", "상향", "하향", "불균형", "밸붕", "balance", "nerf", "buff"],
+  "과금":      ["과금", "결제", "현질", "유료", "페이투윈", "P2W", "pay", "purchase", "課金"],
+  "성능":      ["렉", "프레임", "끊김", "최적화", "배터리", "발열", "lag", "fps", "performance", "ラグ"],
+  "서버/접속": ["서버", "접속", "연결", "점검", "server", "disconnect", "maintenance", "接続"],
+  "콘텐츠":   ["콘텐츠", "스토리", "퀘스트", "던전", "지루", "content", "quest", "story"],
+  "고객지원":  ["환불", "고객", "답변", "CS", "refund", "support", "response"]
+};
+const STORE_LABELS = { google_play: "Google Play", app_store: "App Store", steam: "Steam" };
+const STORE_COLORS = { google_play: "#34a853", app_store: "#555", steam: "#1b2838" };
+
+function classifyTopics(review) {
+  const text = `${review.title} ${review.content}`.toLowerCase();
+  return Object.entries(REVIEW_TOPICS)
+    .filter(([, words]) => words.some((w) => text.includes(w.toLowerCase())))
+    .map(([topic]) => topic);
+}
+
+function reviewSentiment(review) {
+  if (review.store === "steam") return review.rating >= 4 ? "positive" : "negative";
+  if (review.rating <= 2) return "negative";
+  if (review.rating >= 4) return "positive";
+  return "neutral";
+}
+
+function playtimeWeight(review) {
+  if (review.playtime == null) return Math.log2((review.thumbsUp || 0) + 2);
+  if (review.playtime >= 100) return 3;
+  if (review.playtime >= 10) return 2;
+  return 1;
+}
+
+function renderReviews() {
+  const reviews = state.reviews?.reviews || [];
+  const patches = state.patches?.patches || [];
+  const games = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
+
+  if (!reviews.length) {
+    document.querySelector("#reviewRatingStrip").innerHTML =
+      `<div class="review-empty">아직 수집된 리뷰가 없습니다.<br>GitHub Actions에서 "Update Store Reviews" 워크플로우를 수동 실행해 주세요.</div>`;
+    document.querySelector("#reviewTimeline").innerHTML = "";
+    document.querySelector("#reviewTopicHeatmap").innerHTML = "";
+    document.querySelector("#reviewTickets").innerHTML = "";
+    return;
+  }
+
+  // ── 평점 카드 ──────────────────────────────────────
+  document.querySelector("#reviewRatingStrip").innerHTML = games.map((game) => {
+    const gameReviews = reviews.filter((r) => r.game === game);
+    const stores = ["google_play", "app_store", "steam"];
+    const badges = stores.map((store) => {
+      const sr = gameReviews.filter((r) => r.store === store);
+      if (!sr.length) return "";
+      const avg = (sr.reduce((s, r) => s + r.rating, 0) / sr.length).toFixed(1);
+      const maxRating = store === "steam" ? 5 : 5;
+      const pct = Math.round((avg / maxRating) * 100);
+      return `<div class="review-store-badge">
+        <span class="store-dot" style="background:${STORE_COLORS[store]}"></span>
+        <span>${STORE_LABELS[store]}</span>
+        <strong>${avg}</strong>
+        <div class="store-bar-track"><div class="store-bar-fill" style="width:${pct}%;background:${STORE_COLORS[store]}"></div></div>
+        <span class="store-count">${sr.length}개</span>
+      </div>`;
+    }).join("");
+    const color = GAME_COLORS[game] || "#888";
+    return `<div class="review-rating-card">
+      <div class="review-card-game" style="color:${color}">${escapeHtml(game)}</div>
+      ${badges || `<span class="hint">데이터 없음</span>`}
+    </div>`;
+  }).join("");
+
+  // ── 부정 트렌드 차트 (SVG) ─────────────────────────
+  const today = new Date();
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(today); d.setDate(d.getDate() - (29 - i));
+    return d.toISOString().slice(0, 10);
+  });
+
+  const W = 680, H = 160, PL = 36, PR = 12, PT = 12, PB = 32;
+  const iW = W - PL - PR, iH = H - PT - PB;
+
+  const gameSeries = games.map((game) => {
+    const gr = reviews.filter((r) => r.game === game);
+    return days.map((date) => {
+      const dr = gr.filter((r) => r.date === date);
+      if (!dr.length) return null;
+      const neg = dr.filter((r) => reviewSentiment(r) === "negative").length;
+      return neg / dr.length;
+    });
+  });
+
+  const xPos = (i) => PL + (i / (days.length - 1)) * iW;
+  const yPos = (v) => PT + (1 - v) * iH;
+
+  const patchLines = patches.map((p) => {
+    const idx = days.indexOf(p.date);
+    if (idx < 0) return "";
+    const x = xPos(idx);
+    return `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT + iH}" stroke="#f5b8b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <title>${escapeHtml(p.game)}: ${escapeHtml(p.title)}</title>`;
+  }).join("");
+
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((v) => {
+    const y = yPos(v);
+    return `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>
+    <text x="${PL - 4}" y="${y + 4}" text-anchor="end" font-size="10" fill="#aaa">${Math.round(v * 100)}%</text>`;
+  }).join("");
+
+  const xLabels = [0, 6, 13, 20, 29].map((i) => {
+    const d = days[i]; if (!d) return "";
+    return `<text x="${xPos(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#aaa">${d.slice(5)}</text>`;
+  }).join("");
+
+  const paths = games.map((game, gi) => {
+    const series = gameSeries[gi];
+    const color = GAME_COLORS[game] || "#888";
+    const pts = series.map((v, i) => v != null ? [xPos(i), yPos(v)] : null).filter(Boolean);
+    if (pts.length < 2) return "";
+    let segments = "";
+    let inPath = false;
+    for (let i = 0; i < series.length; i++) {
+      if (series[i] == null) { inPath = false; continue; }
+      const [x, y] = [xPos(i), yPos(series[i])];
+      if (!inPath) { segments += `M${x},${y}`; inPath = true; }
+      else segments += `L${x},${y}`;
+    }
+    const dots = pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="${color}"/>`).join("");
+    return `<path d="${segments}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>${dots}`;
+  }).join("");
+
+  const legend = games.map((game) => {
+    const color = GAME_COLORS[game] || "#888";
+    return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;">
+      <span style="width:12px;height:3px;background:${color};display:inline-block;border-radius:2px"></span>${escapeHtml(game)}
+    </span>`;
+  }).join("");
+
+  document.querySelector("#reviewTimeline").innerHTML =
+    `<div style="margin-bottom:8px">${legend}<span style="font-size:11px;color:#f5b8b8;">│ 패치</span></div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block">
+      ${gridLines}${patchLines}${paths}${xLabels}
+    </svg>`;
+
+  // ── 토픽 히트맵 ────────────────────────────────────
+  const topics = Object.keys(REVIEW_TOPICS);
+  const negMatrix = games.map((game) =>
+    topics.map((topic) =>
+      reviews.filter((r) => r.game === game && reviewSentiment(r) === "negative" && classifyTopics(r).includes(topic)).length
+    )
+  );
+  const maxVal = Math.max(...negMatrix.flat(), 1);
+
+  const heatRows = games.map((game, gi) => {
+    const cells = negMatrix[gi].map((v, ti) => {
+      const alpha = v === 0 ? 0 : 0.1 + (v / maxVal) * 0.8;
+      const color = GAME_COLORS[game] || "#888";
+      return `<td style="background:${color}${v === 0 ? "00" : ""};opacity:${v === 0 ? 1 : alpha + 0.2};font-weight:${v > 0 ? 600 : 400};color:${v === 0 ? "#ccc" : color}">
+        ${v || "-"}
+      </td>`;
+    }).join("");
+    return `<tr><th>${escapeHtml(game)}</th>${cells}</tr>`;
+  }).join("");
+
+  document.querySelector("#reviewTopicHeatmap").innerHTML =
+    `<table class="heatmap-table">
+      <thead><tr><th></th>${topics.map((t) => `<th>${t}</th>`).join("")}</tr></thead>
+      <tbody>${heatRows}</tbody>
+    </table>`;
+
+  // ── 우선순위 티켓 ──────────────────────────────────
+  const tickets = [];
+  for (const game of games) {
+    const gr = reviews.filter((r) => r.game === game && reviewSentiment(r) === "negative");
+    for (const topic of topics) {
+      const tr = gr.filter((r) => classifyTopics(r).includes(topic));
+      if (!tr.length) continue;
+      const score = Math.round(tr.reduce((s, r) => s + playtimeWeight(r), 0));
+      const examples = tr.slice(0, 2).map((r) => r.title || r.content.slice(0, 60));
+      tickets.push({ game, topic, score, count: tr.length, examples });
+    }
+  }
+  tickets.sort((a, b) => b.score - a.score);
+
+  document.querySelector("#reviewTickets").innerHTML = tickets.slice(0, 12).map((t, i) => {
+    const color = GAME_COLORS[t.game] || "#888";
+    return `<div class="review-ticket">
+      <div class="ticket-rank">#${i + 1}</div>
+      <div class="ticket-body">
+        <div class="ticket-top">
+          <span class="ticket-topic">${escapeHtml(t.topic)}</span>
+          <span class="ticket-game" style="color:${color}">${escapeHtml(t.game)}</span>
+        </div>
+        <div class="ticket-meta">부정 리뷰 ${t.count}건 · 가중 점수 ${t.score}</div>
+        ${t.examples.map((ex) => `<div class="ticket-example">"${escapeHtml(ex)}"</div>`).join("")}
+      </div>
+    </div>`;
+  }).join("") || `<div class="hint">데이터가 없습니다.</div>`;
+}
+
 // ── 메인 탭 (피드 / AI 요약) ────────────────────────
 const viewFeed    = document.querySelector("#viewFeed");
 const viewSummary = document.querySelector("#viewSummary");
+const viewReviews = document.querySelector("#viewReviews");
 const summaryContent = document.querySelector("#summaryContent");
 
 function renderSummary() {
@@ -730,10 +934,21 @@ document.querySelectorAll(".main-tab").forEach((btn) => {
     state.view = btn.dataset.view;
     viewFeed.hidden    = state.view !== "feed";
     viewSummary.hidden = state.view !== "summary";
+    viewReviews.hidden = state.view !== "reviews";
     if (state.view === "summary" && !state.summary) {
       summaryContent.innerHTML = `<div class="summary-empty">요약 불러오는 중...</div>`;
       state.summary = await fetchJson("summary.json").catch(() => null);
       renderSummary();
+    }
+    if (state.view === "reviews") {
+      if (!state.reviews) {
+        document.querySelector("#reviewRatingStrip").innerHTML = `<div class="review-empty">리뷰 불러오는 중...</div>`;
+        [state.reviews, state.patches] = await Promise.all([
+          fetchJson("reviews.json").catch(() => null),
+          fetchJson("patches.json").catch(() => null)
+        ]);
+      }
+      renderReviews();
     }
   });
 });
