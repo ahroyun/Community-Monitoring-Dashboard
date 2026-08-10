@@ -5,30 +5,27 @@ import { join, dirname } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const GAMES = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
-const API_KEY = process.env.ANTHROPIC_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 
-// ── Claude API 호출 ───────────────────────────────────
-async function callClaude(prompt) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+// ── Gemini API 호출 ───────────────────────────────────
+async function callGemini(prompt) {
+  const model = "gemini-2.0-flash-lite";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+  const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEY,
-      "anthropic-version": "2023-06-01"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 400,
-      messages: [{ role: "user", content: prompt }]
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 400 }
     }),
     signal: AbortSignal.timeout(30000)
   });
   if (!res.ok) {
     const err = await res.text().catch(() => "");
-    throw new Error(`Claude API ${res.status}: ${err.slice(0, 200)}`);
+    throw new Error(`Gemini API ${res.status}: ${err.slice(0, 200)}`);
   }
   const data = await res.json();
-  return data.content[0].text.trim();
+  return data.candidates[0].content.parts[0].text.trim();
 }
 
 // ── 게임별 요약 생성 ──────────────────────────────────
@@ -56,7 +53,7 @@ ${reviewText}
 긴급: (즉각 대응이 필요한 심각한 이슈가 있으면 1줄, 없으면 "없음")`;
 
   try {
-    const text = await callClaude(prompt);
+    const text = await callGemini(prompt);
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
     const get = (prefix) => {
       const line = lines.find(l => l.startsWith(prefix));
@@ -85,7 +82,7 @@ function sentiment(r) {
 
 // ── Main ─────────────────────────────────────────────
 if (!API_KEY) {
-  console.error("ANTHROPIC_API_KEY가 설정되지 않았습니다.");
+  console.error("GEMINI_API_KEY가 설정되지 않았습니다.");
   process.exit(1);
 }
 
