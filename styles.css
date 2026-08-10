@@ -1058,215 +1058,117 @@ button:hover {
   overflow: hidden;
 }
 
-/* 패치 임팩트 카드 */
+/* 리뷰 추이 분석 */
 .review-patch-impact {
+  display: block;
+}
+
+.trend-chart-wrap {
+  margin-bottom: 4px;
+}
+
+.trend-legend {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
-.patch-card {
-  border: 1px solid var(--line);
-  border-left-width: 4px;
-  border-radius: 10px;
-  padding: 15px 18px;
+.spike-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+  color: var(--ink);
+}
+
+/* 스파이크 카드 그리드 */
+.spike-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.spike-card {
   background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid #dc2626;
+  border-radius: 10px;
+  padding: 13px 15px;
 }
 
-.patch-card.improved { border-left-color: var(--good); }
-.patch-card.worsened { border-left-color: var(--danger); }
-.patch-card.neutral  { border-left-color: var(--line); }
-
-.patch-card-head {
+.spike-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 13px;
-  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
-.patch-card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.patch-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.patch-game {
+.spike-week {
   font-weight: 700;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.patch-title-text {
-  font-weight: 600;
   font-size: 14px;
   color: var(--ink);
 }
 
-.patch-date {
+.spike-game-label {
   font-size: 12px;
-  color: var(--muted);
-  flex-shrink: 0;
+  font-weight: 600;
 }
 
-/* 임팩트 뱃지 */
-.impact-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.impact-badge.improved { background: #dcfce7; color: #166534; }
-.impact-badge.worsened { background: #fee2e2; color: #991b1b; }
-.impact-badge.neutral  { background: var(--line); color: var(--muted); }
-
-/* 패치 비교 레이아웃 */
-.patch-compare {
-  display: grid;
-  grid-template-columns: 1fr 28px 1fr;
-  gap: 0;
-  align-items: start;
-  margin-bottom: 12px;
-}
-
-.patch-arrow {
-  text-align: center;
-  color: var(--muted);
-  padding-top: 30px;
-  font-size: 16px;
-}
-
-.patch-window {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 11px 13px;
-}
-
-.patch-window-label {
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 700;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.patch-metric {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin-bottom: 5px;
-}
-
-.patch-metric-val {
-  font-size: 22px;
+.spike-rate {
+  font-size: 24px;
   font-weight: 800;
-  color: var(--ink);
+  color: #dc2626;
   line-height: 1;
 }
 
-.patch-metric-val.worse  { color: var(--danger); }
-.patch-metric-val.better { color: var(--good); }
-
-.patch-metric-label {
-  font-size: 12px;
-  color: var(--muted);
+.spike-rate small {
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.patch-metric-delta {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.patch-metric-delta.worse  { color: var(--danger); }
-.patch-metric-delta.better { color: var(--good); }
-
-.patch-topics {
-  margin-top: 9px;
+.spike-topics {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--muted);
+  margin-bottom: 8px;
 }
 
-.patch-topics span {
-  background: var(--line);
+.spike-topics span {
+  background: #fee2e2;
+  color: #991b1b;
   border-radius: 4px;
   padding: 2px 7px;
-  color: var(--ink);
-  font-weight: 600;
   font-size: 11px;
+  font-weight: 600;
 }
 
-/* 패치 리뷰 토글 */
-.patch-reviews-toggle {
-  margin-top: 10px;
-}
-
-.patch-reviews-toggle > summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--muted);
-  user-select: none;
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.patch-reviews-toggle > summary::-webkit-details-marker { display: none; }
-.patch-reviews-toggle > summary::before { content: "▸ "; font-size: 10px; }
-.patch-reviews-toggle[open] > summary::before { content: "▾ "; }
-
-.patch-reviews-list {
-  margin-top: 10px;
+.spike-example {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 2px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
 }
 
-.patch-review-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.patch-review-meta {
+.spike-example-meta {
   font-size: 11px;
   color: var(--muted);
   font-weight: 600;
 }
 
-.patch-review-text {
-  font-size: 13px;
+.spike-example-text {
+  font-size: 12px;
   color: var(--ink);
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 @media (max-width: 640px) {
-  .patch-compare { grid-template-columns: 1fr; }
-  .patch-arrow { display: none; }
+  .spike-cards { grid-template-columns: 1fr; }
   .review-issues { grid-template-columns: 1fr; }
 }
