@@ -107,7 +107,7 @@ async function fetchSteam(game) {
     for (let i = 0; i < 5; i++) {
       const params = new URLSearchParams({
         json: "1",
-        language: "koreana",
+        language: "all",
         filter: "recent",
         num_per_page: "100",
         cursor,
