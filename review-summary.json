@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-08-10T10:35:33.820Z",
+  "from": "2026-07-11",
+  "to": "2026-08-10",
+  "summaries": [
+    {
+      "game": "대항해시대 오리진",
+      "reviewCount": 9,
+      "posCount": 5,
+      "negCount": 4,
+      "avgRating": 3.2,
+      "positive": null,
+      "negative": null,
+      "urgent": null
+    },
+    {
+      "game": "언디셈버",
+      "reviewCount": 53,
+      "posCount": 14,
+      "negCount": 37,
+      "avgRating": 2.1,
+      "positive": null,
+      "negative": null,
+      "urgent": null
+    },
+    {
+      "game": "창세기전 모바일",
+      "reviewCount": 9,
+      "posCount": 4,
+      "negCount": 4,
+      "avgRating": 3,
+      "positive": null,
+      "negative": null,
+      "urgent": null
+    }
+  ]
+}
