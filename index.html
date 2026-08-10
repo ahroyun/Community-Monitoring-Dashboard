@@ -45,6 +45,7 @@
       <div class="main-tabs">
         <button class="main-tab active" data-view="feed">실시간 피드</button>
         <button class="main-tab" data-view="summary">AI 요약</button>
+        <button class="main-tab" data-view="reviews">스토어 리뷰</button>
       </div>
 
       <div id="viewFeed">
@@ -119,6 +120,25 @@
       </section>
       </div><!-- /viewFeed -->
 
+      <div id="viewReviews" hidden>
+        <section class="review-section">
+          <div id="reviewRatingStrip" class="review-rating-strip"></div>
+          <div class="review-columns">
+            <div class="review-main">
+              <h2>부정 리뷰 트렌드 <span class="hint" style="font-weight:400;font-size:13px;">최근 30일</span></h2>
+              <div id="reviewTimeline" class="review-timeline"></div>
+              <h2 style="margin-top:28px;">토픽별 부정 리뷰</h2>
+              <div id="reviewTopicHeatmap" class="review-topic-heatmap"></div>
+            </div>
+            <div class="review-side">
+              <h2>우선순위 티켓</h2>
+              <p class="hint">부정 리뷰 수 × 플레이타임 가중치 기준</p>
+              <div id="reviewTickets" class="review-tickets"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
       <div id="viewSummary" hidden>
         <section class="summary-section">
           <div class="summary-tabs">
@@ -130,5 +150,8 @@
       </div>
     </main>
     <script src="./app.js" type="module"></script>
+    <footer style="text-align:center; padding: 24px 0 16px; color: #aaa; font-size: 12px;">
+      관리자 · 라이브기획팀 윤아로 (<a href="mailto:ar.yun@line.games" style="color:#aaa;">ar.yun@line.games</a>)
+    </footer>
   </body>
 </html>
