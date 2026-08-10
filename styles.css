@@ -1077,5 +1077,21 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   font-style: italic;
-  margin-top: 2px;
+  margin-top: 4px;
+}
+
+.ticket-example-meta {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 4px;
+  font-size: 11px;
+}
+
+/* 리뷰 게임 필터 */
+.review-game-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
 }
