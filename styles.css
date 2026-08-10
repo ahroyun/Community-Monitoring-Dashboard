@@ -912,3 +912,170 @@ button:hover {
     flex-direction: column;
   }
 }
+
+/* ── 스토어 리뷰 탭 ───────────────────────────────── */
+.review-section {
+  padding: 24px 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.review-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 40px;
+  line-height: 1.8;
+}
+
+/* 평점 카드 스트립 */
+.review-rating-strip {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.review-rating-card {
+  flex: 1;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.review-card-game {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.review-store-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.store-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.store-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.store-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.store-count {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* 컬럼 레이아웃 */
+.review-columns {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .review-columns { grid-template-columns: 1fr; }
+}
+
+.review-timeline svg {
+  overflow: visible;
+}
+
+/* 토픽 히트맵 */
+.review-topic-heatmap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.review-topic-heatmap .heatmap-table td {
+  min-width: 52px;
+  text-align: center;
+  font-size: 13px;
+  padding: 8px 6px;
+  border-radius: 4px;
+}
+
+/* 우선순위 티켓 */
+.review-tickets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-ticket {
+  display: flex;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.ticket-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  width: 24px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.ticket-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ticket-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.ticket-topic {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.ticket-game {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ticket-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.ticket-example {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+  margin-top: 2px;
+}
