@@ -15,6 +15,7 @@ const state = {
   summaryPeriod: "daily",
   view: "feed",
   game: ALL,
+  reviewGame: ALL,
   sourceType: ALL,
   query: "",
   onlyAlerts: false,
@@ -677,9 +678,31 @@ function playtimeWeight(review) {
 }
 
 function renderReviews() {
-  const reviews = state.reviews?.reviews || [];
+  const allReviews = state.reviews?.reviews || [];
   const patches = state.patches?.patches || [];
   const games = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
+
+  // ── 게임 필터 ───────────────────────────────────────
+  const filterEl = document.querySelector("#reviewGameFilter");
+  filterEl.innerHTML = [ALL, ...games].map((g) => {
+    const color = GAME_COLORS[g];
+    const dot = color ? `<span class="filter-dot" style="background:${color}"></span>` : "";
+    const cnt = g === ALL ? allReviews.length : allReviews.filter((r) => r.game === g).length;
+    return `<button class="filter ${state.reviewGame === g ? "active" : ""}" type="button" data-game="${escapeHtml(g)}">
+      <span>${dot}${escapeHtml(g)}</span><small>${cnt}</small>
+    </button>`;
+  }).join("");
+  filterEl.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.reviewGame = btn.dataset.game;
+      renderReviews();
+    });
+  });
+
+  const reviews = state.reviewGame === ALL
+    ? allReviews
+    : allReviews.filter((r) => r.game === state.reviewGame);
+  const scopedGames = state.reviewGame === ALL ? games : [state.reviewGame];
 
   if (!reviews.length) {
     document.querySelector("#reviewRatingStrip").innerHTML =
@@ -691,7 +714,7 @@ function renderReviews() {
   }
 
   // ── 평점 카드 ──────────────────────────────────────
-  document.querySelector("#reviewRatingStrip").innerHTML = games.map((game) => {
+  document.querySelector("#reviewRatingStrip").innerHTML = scopedGames.map((game) => {
     const gameReviews = reviews.filter((r) => r.game === game);
     const stores = ["google_play", "app_store", "steam"];
     const badges = stores.map((store) => {
@@ -725,7 +748,7 @@ function renderReviews() {
   const W = 680, H = 160, PL = 36, PR = 12, PT = 12, PB = 32;
   const iW = W - PL - PR, iH = H - PT - PB;
 
-  const gameSeries = games.map((game) => {
+  const gameSeries = scopedGames.map((game) => {
     const gr = reviews.filter((r) => r.game === game);
     return days.map((date) => {
       const dr = gr.filter((r) => r.date === date);
@@ -757,7 +780,7 @@ function renderReviews() {
     return `<text x="${xPos(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#aaa">${d.slice(5)}</text>`;
   }).join("");
 
-  const paths = games.map((game, gi) => {
+  const paths = scopedGames.map((game, gi) => {
     const series = gameSeries[gi];
     const color = GAME_COLORS[game] || "#888";
     const pts = series.map((v, i) => v != null ? [xPos(i), yPos(v)] : null).filter(Boolean);
@@ -774,7 +797,7 @@ function renderReviews() {
     return `<path d="${segments}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>${dots}`;
   }).join("");
 
-  const legend = games.map((game) => {
+  const legend = scopedGames.map((game) => {
     const color = GAME_COLORS[game] || "#888";
     return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;">
       <span style="width:12px;height:3px;background:${color};display:inline-block;border-radius:2px"></span>${escapeHtml(game)}
@@ -789,14 +812,14 @@ function renderReviews() {
 
   // ── 토픽 히트맵 ────────────────────────────────────
   const topics = Object.keys(REVIEW_TOPICS);
-  const negMatrix = games.map((game) =>
+  const negMatrix = scopedGames.map((game) =>
     topics.map((topic) =>
       reviews.filter((r) => r.game === game && reviewSentiment(r) === "negative" && classifyTopics(r).includes(topic)).length
     )
   );
   const maxVal = Math.max(...negMatrix.flat(), 1);
 
-  const heatRows = games.map((game, gi) => {
+  const heatRows = scopedGames.map((game, gi) => {
     const cells = negMatrix[gi].map((v, ti) => {
       const alpha = v === 0 ? 0 : 0.1 + (v / maxVal) * 0.8;
       const color = GAME_COLORS[game] || "#888";
@@ -815,13 +838,17 @@ function renderReviews() {
 
   // ── 우선순위 티켓 ──────────────────────────────────
   const tickets = [];
-  for (const game of games) {
+  for (const game of scopedGames) {
     const gr = reviews.filter((r) => r.game === game && reviewSentiment(r) === "negative");
     for (const topic of topics) {
       const tr = gr.filter((r) => classifyTopics(r).includes(topic));
       if (!tr.length) continue;
       const score = Math.round(tr.reduce((s, r) => s + playtimeWeight(r), 0));
-      const examples = tr.slice(0, 2).map((r) => r.title || r.content.slice(0, 60));
+      const examples = tr.slice(0, 2).map((r) => ({
+        text: r.title || r.content.slice(0, 60),
+        date: r.date || "",
+        store: STORE_LABELS[r.store] || r.store
+      }));
       tickets.push({ game, topic, score, count: tr.length, examples });
     }
   }
@@ -837,7 +864,11 @@ function renderReviews() {
           <span class="ticket-game" style="color:${color}">${escapeHtml(t.game)}</span>
         </div>
         <div class="ticket-meta">부정 리뷰 ${t.count}건 · 가중 점수 ${t.score}</div>
-        ${t.examples.map((ex) => `<div class="ticket-example">"${escapeHtml(ex)}"</div>`).join("")}
+        ${t.examples.map((ex) => `
+          <div class="ticket-example">
+            <span class="ticket-example-meta">${escapeHtml(ex.store)}${ex.date ? ` · ${escapeHtml(ex.date)}` : ""}</span>
+            "${escapeHtml(ex.text)}"
+          </div>`).join("")}
       </div>
     </div>`;
   }).join("") || `<div class="hint">데이터가 없습니다.</div>`;
