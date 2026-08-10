@@ -1,4 +1,4 @@
-=<!doctype html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8">
@@ -121,13 +121,22 @@
       </div><!-- /viewFeed -->
 
       <div id="viewReviews" hidden>
-        <section class="review-section">
-          <div class="review-feed-head">
-            <div id="reviewGameFilter" class="review-game-filter"></div>
-            <div id="reviewSentFilter" class="review-sent-filter"></div>
-          </div>
-          <div id="reviewFeed" class="review-feed"></div>
-        </section>
+        <div class="review-layout">
+          <aside class="review-summary-panel">
+            <div class="review-summary-header">
+              <span class="review-summary-title">최근 30일 요약</span>
+              <span id="reviewSummaryMeta" class="review-summary-meta"></span>
+            </div>
+            <div id="reviewSummaryContent"></div>
+          </aside>
+          <section class="review-feed-panel">
+            <div class="review-feed-head">
+              <div id="reviewGameFilter" class="review-game-filter"></div>
+              <div id="reviewSentFilter" class="review-sent-filter"></div>
+            </div>
+            <div id="reviewFeed" class="review-feed"></div>
+          </section>
+        </div>
       </div>
 
       <div id="viewSummary" hidden>
