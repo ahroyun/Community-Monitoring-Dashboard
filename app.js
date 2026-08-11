@@ -878,26 +878,32 @@ function renderSummary() {
     const result = {};
     if (!text) return result;
 
-    // 섹션 헤더 위치를 먼저 모두 찾기 (어떤 포맷이든)
-    // 매칭 대상: [주요 이슈] / **[주요 이슈]** / ## [주요 이슈] / 주요 이슈: 등
-    const headerRe = new RegExp(
-      `(?:^|\\n)\\s*(?:#+\\s*)?(?:\\*{1,2})?\\[(${SUMMARY_SECTIONS.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\](?:\\*{1,2})?\\s*:?`,
-      "gi"
-    );
+    // 라인 단위 파싱 — 섹션 헤더가 한 줄 전체인 경우를 감지
+    const lines = text.split(/\r?\n/);
+    let currentSection = null;
+    const buffer = [];
 
-    const found = [];
-    let m;
-    while ((m = headerRe.exec(text)) !== null) {
-      found.push({ label: m[1], start: m.index, headerEnd: m.index + m[0].length });
+    const isHeader = (line) => {
+      const t = line.trim();
+      return SUMMARY_SECTIONS.find((s) => {
+        const e = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`^(?:#+\\s*)?(?:\\*+)?\\[${e}\\](?:\\*+)?\\s*:?$`).test(t);
+      }) || null;
+    };
+
+    for (const line of lines) {
+      const section = isHeader(line);
+      if (section) {
+        if (currentSection) result[currentSection] = buffer.join("\n").trim();
+        currentSection = section;
+        buffer.length = 0;
+      } else if (currentSection) {
+        buffer.push(line);
+      }
     }
+    if (currentSection) result[currentSection] = buffer.join("\n").trim();
 
-    found.forEach(({ label, headerEnd }, i) => {
-      const end = found[i + 1]?.start ?? text.length;
-      result[label] = text.slice(headerEnd, end).trim();
-    });
-
-    // 못 찾은 섹션은 빈 문자열
-    SUMMARY_SECTIONS.forEach(l => { if (!(l in result)) result[l] = ""; });
+    SUMMARY_SECTIONS.forEach((s) => { if (!(s in result)) result[s] = ""; });
     return result;
   }
 
