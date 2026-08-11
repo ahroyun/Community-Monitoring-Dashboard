@@ -113,8 +113,14 @@ async function scrapeApp(appId, gameName) {
   page.on("response", async (res) => {
     const url = res.url();
     const ct  = res.headers()["content-type"] || "";
+
+    // 모든 요청 URL 로그 (진단용)
+    if (!url.includes("_next/static") && !url.includes(".png") && !url.includes(".jpg")
+        && !url.includes(".ico") && !url.includes(".css") && !url.includes(".js")) {
+      console.log(`  [네트워크] ${res.status()} ${url.slice(0, 120)}`);
+    }
+
     if (!ct.includes("application/json") && !ct.includes("text/plain")) return;
-    // 리뷰 관련 URL 우선, 아니면 모든 JSON 수집
     try {
       const json = await res.json();
       captured.push({ url, json });
@@ -139,8 +145,9 @@ async function scrapeApp(appId, gameName) {
       'a:has-text("전체 리뷰")',
       'button:has-text("전체 리뷰")',
       'a:has-text("리뷰 더보기")',
-      'a[href*="review"]',
-      '[class*="review"] a',
+      'a:has-text("더보기"):near(:has-text("평점 및 리뷰"))',
+      'a[href*="review"]:not([href*="policy"])',
+      '[class*="review"] a:not([href*="policy"])',
       '[class*="review"] button',
     ];
 
