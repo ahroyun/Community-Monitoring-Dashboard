@@ -38,9 +38,14 @@ const PREFERRED_MODELS = [
 const availableModels = await getAvailableModels();
 console.log("사용 가능한 모델:", availableModels.join(", "));
 
-const GEMINI_MODELS = PREFERRED_MODELS.filter((m) =>
-  availableModels.length === 0 || availableModels.includes(m)
-);
+const STABLE_FALLBACKS = ["gemini-1.5-flash", "gemini-1.5-pro"];
+const GEMINI_MODELS = [
+  ...PREFERRED_MODELS.filter((m) =>
+    availableModels.length === 0 || availableModels.includes(m)
+  ),
+  ...STABLE_FALLBACKS.filter((m) => !PREFERRED_MODELS.includes(m))
+];
+console.log("실제 사용할 모델 목록:", GEMINI_MODELS.join(", ") || "(없음 — 전체 실패 가능성)");
 
 async function callGemini(prompt) {
   let lastErr;
@@ -122,7 +127,9 @@ async function summarizeGame(game, posts, period, dateLabel) {
   const totalComments = posts.reduce((sum, p) => sum + (parseInt(p.comments) || 0), 0);
   if (!posts.length) return { summary: "", postCount: 0, totalViews: 0, totalComments: 0 };
   try {
-    const prompt = buildPrompt(game, posts.slice(0, 80), period, dateLabel);
+    // 조회수 높은 순 40개만 — 프롬프트 크기 제한으로 안정성 향상
+    const topPosts = [...posts].sort((a, b) => (parseInt(b.views) || 0) - (parseInt(a.views) || 0)).slice(0, 40);
+    const prompt = buildPrompt(game, topPosts, period, dateLabel);
     const text = await callGemini(prompt);
     return { summary: text, postCount, totalViews, totalComments };
   } catch (err) {
@@ -249,6 +256,7 @@ for (const game of GAMES) {
   dailyResult[game] = await summarizeGame(game, dailyPosts, "daily", `${kstYesterdayStr} 하루 동안`);
 
   if (shouldUpdateWeekly) {
+    await new Promise((r) => setTimeout(r, 3000)); // daily/weekly 사이 딜레이
     const weekPosts = gamePosts.filter((p) => {
       const d = postDateKST(p);
       return d && d >= prevWeekMonStr && d <= prevWeekSunStr;
@@ -257,8 +265,8 @@ for (const game of GAMES) {
     weeklyResult[game] = await summarizeGame(game, weekPosts, "weekly", `${prevWeekMonStr} ~ ${prevWeekSunStr}`);
   }
 
-  // Gemini 무료 tier rate limit 방지
-  await new Promise((r) => setTimeout(r, 2000));
+  // 게임 간 Gemini rate limit 방지
+  await new Promise((r) => setTimeout(r, 3000));
 }
 
 const summary = {
