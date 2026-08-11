@@ -57,19 +57,24 @@ async function callGemini(prompt) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
         })
       }
     );
     if (res.ok) {
       const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text || "";
+      const finishReason = candidate?.finishReason;
+      if (finishReason === "MAX_TOKENS") {
+        console.warn(`  [${model}] ⚠ 응답 잘림 (MAX_TOKENS) — maxOutputTokens 증가 필요`);
+      }
       if (!text.trim()) {
         console.warn(`  [${model}] 빈 응답 반환 — 다음 모델 시도`);
         lastErr = new Error(`Empty response from ${model}`);
         continue;
       }
-      console.log(`  → 모델 사용: ${model}`);
+      console.log(`  → 모델 사용: ${model}, finishReason: ${finishReason}`);
       return text;
     }
     const errText = await res.text();
@@ -82,7 +87,7 @@ async function callGemini(prompt) {
       const retry = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
         { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } }) }
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 8192 } }) }
       );
       if (retry.ok) {
         const data = await retry.json();
