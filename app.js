@@ -774,8 +774,8 @@ function renderReviews() {
   const gameFiltered = state.reviewGame === ALL ? allReviews : allReviews.filter((r) => r.game === state.reviewGame);
   storeEl.innerHTML = STORE_OPTIONS.map(({ key, label }) => {
     const cnt = key === "all" ? gameFiltered.length : gameFiltered.filter((r) => r.store === key).length;
-    if (cnt === 0 && key !== "all") return "";
-    return `<button class="review-store-btn ${state.reviewStore === key ? "active" : ""}" type="button" data-store="${key}">${label} <small>${cnt}</small></button>`;
+    const disabled = cnt === 0 && key !== "all" ? "disabled" : "";
+    return `<button class="review-store-btn ${state.reviewStore === key ? "active" : ""}" type="button" data-store="${key}" ${disabled}>${label} <small>${cnt}</small></button>`;
   }).join("");
   storeEl.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => { state.reviewStore = btn.dataset.store; renderReviews(); });
