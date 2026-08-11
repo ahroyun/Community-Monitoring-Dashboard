@@ -2,7 +2,7 @@ name: Update Store Reviews
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # 매일 오전 11시 KST (UTC 02:00)
+    - cron: '0 23 * * *'  # 매일 오전 8시 KST (UTC 23:00)
   workflow_dispatch:        # 수동 실행 가능
 
 jobs:
@@ -19,10 +19,17 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install google-play-scraper
+        run: npm install google-play-scraper playwright
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Fetch store reviews
         run: node scripts/fetch-reviews.js
+
+      - name: Fetch OneStore reviews
+        run: node scripts/fetch-onestore-reviews.js
+        continue-on-error: true
 
       - name: Generate review summary
         env:
