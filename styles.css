@@ -923,12 +923,12 @@ button:hover {
   min-height: calc(100vh - 200px);
 }
 
-/* 좌측: AI 요약 패널 */
+/* 우측: AI 요약 패널 */
 .review-summary-panel {
-  width: 300px;
+  width: 280px;
   flex-shrink: 0;
-  padding: 20px 16px 20px 24px;
-  border-right: 1px solid var(--line);
+  padding: 20px 24px 20px 16px;
+  border-left: 1px solid var(--line);
   position: sticky;
   top: 0;
   max-height: 100vh;
@@ -1103,10 +1103,12 @@ button:hover {
     width: 100%;
     position: static;
     max-height: none;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    padding: 16px 16px 12px;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding: 16px;
+    order: 2;
   }
+  .review-feed-panel { order: 1; }
 }
 
 .review-section {
@@ -1130,12 +1132,12 @@ button:hover {
   margin-bottom: 18px;
 }
 
-.review-filter-top {
+.review-filter-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .review-game-filter {
