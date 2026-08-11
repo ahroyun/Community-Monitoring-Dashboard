@@ -59,6 +59,11 @@ async function callGemini(prompt) {
     if (res.ok) {
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!text.trim()) {
+        console.warn(`  [${model}] 빈 응답 반환 — 다음 모델 시도`);
+        lastErr = new Error(`Empty response from ${model}`);
+        continue;
+      }
       console.log(`  → 모델 사용: ${model}`);
       return text;
     }
