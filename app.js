@@ -876,31 +876,28 @@ function renderSummary() {
 
   function parseSummary(text) {
     const result = {};
-    const t = text || "";
-    SUMMARY_SECTIONS.forEach((label, i) => {
-      const next = SUMMARY_SECTIONS[i + 1];
-      // 다음 섹션 lookahead — 어떤 포맷이든 감지
-      const nextLook = next
-        ? `(?=(?:#+\\s*)?(?:\\*{1,2})?\\[?${next}\\]?(?:\\*{1,2})?)`
-        : "$";
+    if (!text) return result;
 
-      const patterns = [
-        // [주요 이슈]
-        new RegExp(`\\[${label}\\]\\s*([\\s\\S]*?)${nextLook}`, "i"),
-        // ## [주요 이슈] / ### [주요 이슈]
-        new RegExp(`#+\\s*\\[${label}\\]\\s*([\\s\\S]*?)${nextLook}`, "i"),
-        // **[주요 이슈]** / **주요 이슈**
-        new RegExp(`\\*{1,2}\\[?${label}\\]?\\*{1,2}:?\\s*([\\s\\S]*?)${nextLook}`, "i"),
-        // 주요 이슈: (콜론만)
-        new RegExp(`${label}:\\s*([\\s\\S]*?)${nextLook}`, "i"),
-      ];
+    // 섹션 헤더 위치를 먼저 모두 찾기 (어떤 포맷이든)
+    // 매칭 대상: [주요 이슈] / **[주요 이슈]** / ## [주요 이슈] / 주요 이슈: 등
+    const headerRe = new RegExp(
+      `(?:^|\\n)(?:#+\\s*)?(?:\\*{1,2})?\\[?(${SUMMARY_SECTIONS.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\]?(?:\\*{1,2})?\\s*:?`,
+      "gi"
+    );
 
-      for (const re of patterns) {
-        const m = t.match(re);
-        if (m?.[1]?.trim()) { result[label] = m[1].trim(); return; }
-      }
-      result[label] = "";
+    const found = [];
+    let m;
+    while ((m = headerRe.exec(text)) !== null) {
+      found.push({ label: m[1], start: m.index, headerEnd: m.index + m[0].length });
+    }
+
+    found.forEach(({ label, headerEnd }, i) => {
+      const end = found[i + 1]?.start ?? text.length;
+      result[label] = text.slice(headerEnd, end).trim();
     });
+
+    // 못 찾은 섹션은 빈 문자열
+    SUMMARY_SECTIONS.forEach(l => { if (!(l in result)) result[l] = ""; });
     return result;
   }
 
