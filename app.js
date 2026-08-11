@@ -77,7 +77,13 @@ function formatRefreshTime(value) {
 }
 
 function allPosts() {
-  return state.data?.results.flatMap((result) => result.posts) || [];
+  const dataPosts = state.data?.results.flatMap((result) => result.posts) || [];
+  const historyPosts = state.history?.posts || [];
+  if (!historyPosts.length) return dataPosts;
+  // history.json과 data.json 합치되 중복 제거 (id 기준)
+  const dataIds = new Set(dataPosts.map((p) => p.id));
+  const extra = historyPosts.filter((p) => !dataIds.has(p.id));
+  return [...dataPosts, ...extra];
 }
 
 function postsForSelectedGame() {
