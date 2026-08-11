@@ -9,44 +9,94 @@ const ONESTORE_APPS = [
   { game: "창세기전 모바일", appId: "0000773185" }
 ];
 
-const MAX_PAGES   = 10;   // "더보기" 최대 클릭 횟수
-const MAX_REVIEWS = 300;
 const ONE_YEAR_AGO = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
-// ── 날짜 파싱 ─────────────────────────────────────────
 function parseDate(str) {
   if (!str) return null;
   str = str.trim();
-
-  // "2024.01.15" or "2024-01-15"
   const abs = str.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
   if (abs) return `${abs[1]}-${abs[2].padStart(2,"0")}-${abs[3].padStart(2,"0")}`;
-
-  // "2024년 1월 15일"
   const kor = str.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
   if (kor) return `${kor[1]}-${kor[2].padStart(2,"0")}-${kor[3].padStart(2,"0")}`;
-
-  // 상대 날짜 "N일 전" / "N시간 전" / "N분 전"
   const dayAgo = str.match(/(\d+)일\s*전/);
-  if (dayAgo) {
-    const d = new Date(Date.now() - parseInt(dayAgo[1]) * 86400000);
-    return d.toISOString().slice(0, 10);
-  }
+  if (dayAgo) return new Date(Date.now() - parseInt(dayAgo[1]) * 86400000).toISOString().slice(0,10);
   const hrAgo = str.match(/(\d+)시간\s*전/);
-  if (hrAgo) {
-    const d = new Date(Date.now() - parseInt(hrAgo[1]) * 3600000);
-    return d.toISOString().slice(0, 10);
-  }
-  if (/방금|분\s*전/.test(str)) return new Date().toISOString().slice(0, 10);
-
+  if (hrAgo)  return new Date(Date.now() - parseInt(hrAgo[1])  * 3600000).toISOString().slice(0,10);
+  if (/방금|분\s*전/.test(str)) return new Date().toISOString().slice(0,10);
   return null;
 }
 
-function makeId(raw) {
-  return `onestore_${String(raw).replace(/\W/g, "").slice(-60)}`;
+function makeId(content, date) {
+  return `onestore_${(content + date).replace(/\W/g,"").slice(-60)}`;
 }
 
-// ── 단일 앱 스크래핑 ──────────────────────────────────
+// JSON 응답에서 리뷰 배열을 재귀적으로 탐색
+function extractReviews(obj, depth = 0) {
+  if (depth > 6 || !obj || typeof obj !== "object") return [];
+  const results = [];
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      // 리뷰처럼 생긴 객체 판별: 텍스트 + 평점 필드 조합
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        const keys = Object.keys(item).map(k => k.toLowerCase());
+        const hasContent = keys.some(k => ["content","body","text","comment","reviewcontent","reviewbody","review"].includes(k));
+        const hasRating  = keys.some(k => ["rating","score","star","grade","evaluation"].includes(k));
+        if (hasContent && hasRating) {
+          results.push(item);
+          continue;
+        }
+      }
+      results.push(...extractReviews(item, depth + 1));
+    }
+  } else {
+    for (const val of Object.values(obj)) {
+      results.push(...extractReviews(val, depth + 1));
+    }
+  }
+  return results;
+}
+
+function normalizeReview(raw, gameName) {
+  // 필드명 후보들 탐색
+  const get = (...keys) => {
+    for (const k of keys) {
+      const found = Object.keys(raw).find(rk => rk.toLowerCase() === k.toLowerCase());
+      if (found && raw[found] !== undefined && raw[found] !== null) return raw[found];
+    }
+    return null;
+  };
+
+  const content = String(get("content","body","text","comment","reviewContent","reviewBody") || "").trim();
+  if (!content) return null;
+
+  const ratingRaw = get("rating","score","star","grade","evaluation","starScore","starGrade");
+  const rating = Math.min(5, Math.max(1, Math.round(parseFloat(ratingRaw) || 3)));
+
+  const dateRaw = String(get("date","regDate","registDate","createDate","writtenDate","reviewDate","updatedAt","createdAt") || "");
+  const date = parseDate(dateRaw) || new Date().toISOString().slice(0,10);
+
+  if (date < ONE_YEAR_AGO.toISOString().slice(0,10)) return null;
+
+  const author = String(get("author","writer","nickname","userId","userName","userNm","memberId") || "").trim();
+  const title  = String(get("title","subject","reviewTitle") || "").trim();
+
+  return {
+    id: makeId(content, date),
+    game: gameName,
+    store: "onestore",
+    rating,
+    title,
+    content,
+    date,
+    author,
+    playtime: null,
+    thumbsUp: parseInt(get("likeCount","helpfulCount","thumbsUp","voteUp") || 0),
+    version: String(get("version","appVersion") || ""),
+    fetchedAt: new Date().toISOString()
+  };
+}
+
 async function scrapeApp(appId, gameName) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
@@ -56,161 +106,106 @@ async function scrapeApp(appId, gameName) {
     extraHTTPHeaders: { "Accept-Language": "ko-KR,ko;q=0.9" }
   });
   const page = await context.newPage();
-  const reviews = [];
-  const seenContent = new Set();
+
+  const captured = [];  // 가로챈 API 응답들
+
+  // ── 네트워크 응답 인터셉트 ───────────────────────────
+  page.on("response", async (res) => {
+    const url = res.url();
+    const ct  = res.headers()["content-type"] || "";
+    if (!ct.includes("application/json") && !ct.includes("text/plain")) return;
+    // 리뷰 관련 URL 우선, 아니면 모든 JSON 수집
+    try {
+      const json = await res.json();
+      captured.push({ url, json });
+    } catch { /* binary or parse error */ }
+  });
 
   try {
     const url = `https://m.onestore.co.kr/v2/ko-kr/app/${appId}`;
     console.log(`  → ${url}`);
     await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
 
-    // ── 리뷰 탭 클릭 시도 ──
-    const tabSelectors = [
+    // ── 리뷰 섹션까지 스크롤해서 로딩 트리거 ───────────
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.5));
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(1500);
+
+    // ── "모든 리뷰 보기" / "전체 리뷰" 버튼 클릭 시도 ──
+    const moreReviewSelectors = [
+      'a:has-text("모든 리뷰")',
+      'button:has-text("모든 리뷰")',
+      'a:has-text("전체 리뷰")',
+      'button:has-text("전체 리뷰")',
+      'a:has-text("리뷰 더보기")',
       'a[href*="review"]',
-      'button:has-text("리뷰")',
-      'a:has-text("리뷰")',
-      '[role="tab"]:has-text("리뷰")',
-      'li:has-text("리뷰") button',
+      '[class*="review"] a',
+      '[class*="review"] button',
     ];
-    for (const sel of tabSelectors) {
+
+    let clicked = false;
+    for (const sel of moreReviewSelectors) {
       try {
         const el = page.locator(sel).first();
         if (await el.isVisible({ timeout: 2000 })) {
+          console.log(`  클릭: ${sel}`);
           await el.click();
-          await page.waitForTimeout(1500);
-          console.log(`  리뷰 탭 클릭: ${sel}`);
+          await page.waitForTimeout(2000);
+          // 클릭 후 추가 스크롤 + 대기
+          for (let i = 0; i < 5; i++) {
+            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await page.waitForTimeout(1200);
+            // "더보기" 버튼 반복 클릭
+            const more = page.locator('button:has-text("더보기"), button:has-text("더 보기")').first();
+            if (await more.isVisible({ timeout: 800 }).catch(() => false)) {
+              await more.click();
+              await page.waitForTimeout(1200);
+            } else break;
+          }
+          clicked = true;
           break;
         }
-      } catch { /* 없으면 다음 시도 */ }
+      } catch { /* 없으면 다음 */ }
     }
 
-    // ── 리뷰 아이템 selector 탐색 ──
-    const ITEM_SELECTORS = [
-      "[class*='review-item']",
-      "[class*='reviewItem']",
-      "[class*='ReviewItem']",
-      "[class*='review_item']",
-      "[class*='ReviewListItem']",
-      "[class*='review-list'] li",
-      "[class*='ReviewList'] li",
-      "ul[class*='review'] > li",
-    ];
-
-    let itemSelector = null;
-    for (const sel of ITEM_SELECTORS) {
-      const count = await page.locator(sel).count();
-      if (count > 0) {
-        itemSelector = sel;
-        console.log(`  리뷰 selector 발견: ${sel} (${count}개)`);
-        break;
-      }
+    if (!clicked) {
+      console.warn(`  "모든 리뷰 보기" 버튼을 찾지 못했습니다.`);
+      // 클릭 없이 가로챈 JSON에서 리뷰 탐색
     }
 
-    if (!itemSelector) {
-      console.warn(`  [${gameName}] 리뷰 요소를 찾지 못했습니다. 페이지 구조 확인 필요.`);
-      // 디버그용: 페이지 내 class 목록 일부 출력
-      const classes = await page.evaluate(() =>
-        [...new Set([...document.querySelectorAll("*")].map(e => e.className).filter(c => typeof c === "string" && c.includes("review")).slice(0, 20))]
-      );
-      console.log("  review 포함 class 목록:", classes);
-      return [];
-    }
-
-    // ── 페이지네이션 루프 ──
-    for (let p = 0; p < MAX_PAGES && reviews.length < MAX_REVIEWS; p++) {
-      const items = await page.locator(itemSelector).all();
-
-      for (const item of items) {
-        if (reviews.length >= MAX_REVIEWS) break;
-
-        // rating: aria-label "N점" or data-* or star count
-        let rating = 0;
-        try {
-          const ratingEl = item.locator("[aria-label*='점'], [class*='star'][aria-label], [class*='Star'][aria-label]").first();
-          const ariaLabel = await ratingEl.getAttribute("aria-label");
-          const m = ariaLabel?.match(/(\d)/);
-          if (m) rating = parseInt(m[1]);
-        } catch {}
-
-        if (!rating) {
-          // filled star 개수 세기
-          try {
-            rating = await item.locator("[class*='filled'], [class*='active'], [class*='Full'], [class*='on']").count();
-          } catch {}
-        }
-
-        // content
-        let content = "";
-        try {
-          const contentEl = item.locator("[class*='content'], [class*='body'], [class*='text'], [class*='desc'], p").first();
-          content = (await contentEl.textContent())?.trim() || "";
-        } catch {}
-        if (!content) continue;
-        if (seenContent.has(content)) continue;
-
-        // date
-        let date = null;
-        try {
-          const dateEl = item.locator("[class*='date'], [class*='Date'], time").first();
-          const raw = await dateEl.textContent();
-          date = parseDate(raw);
-        } catch {}
-        date ??= new Date().toISOString().slice(0, 10);
-
-        if (date < ONE_YEAR_AGO.toISOString().slice(0, 10)) continue;
-
-        // author
-        let author = "";
-        try {
-          const authorEl = item.locator("[class*='author'], [class*='nick'], [class*='user'], [class*='name']").first();
-          author = (await authorEl.textContent())?.trim() || "";
-        } catch {}
-
-        seenContent.add(content);
-        reviews.push({
-          id: makeId(content + date),
-          game: gameName,
-          store: "onestore",
-          rating: Math.min(5, Math.max(1, rating || 3)),
-          title: "",
-          content,
-          date,
-          author,
-          playtime: null,
-          thumbsUp: 0,
-          version: "",
-          fetchedAt: new Date().toISOString()
-        });
-      }
-
-      // "더보기" 버튼 찾기
-      const moreSelectors = [
-        "button:has-text('더보기')",
-        "button:has-text('더 보기')",
-        "a:has-text('더보기')",
-        "[class*='more'] button",
-        "[class*='More'] button",
-        "[class*='load-more']",
-      ];
-      let clicked = false;
-      for (const sel of moreSelectors) {
-        try {
-          const btn = page.locator(sel).first();
-          if (await btn.isVisible({ timeout: 1500 })) {
-            await btn.click();
-            await page.waitForTimeout(2000);
-            clicked = true;
-            break;
-          }
-        } catch {}
-      }
-      if (!clicked) break;
-    }
+    await page.waitForTimeout(1000);
 
   } catch (err) {
-    console.error(`  [${gameName}] 스크래핑 오류:`, err.message);
+    console.error(`  [${gameName}] 오류:`, err.message);
   } finally {
     await browser.close();
+  }
+
+  // ── 가로챈 응답에서 리뷰 추출 ───────────────────────
+  console.log(`  가로챈 JSON 응답 ${captured.length}개`);
+
+  const reviews = [];
+  const seenIds = new Set();
+
+  // review 관련 URL 우선 처리
+  const sorted = [
+    ...captured.filter(c => /review/i.test(c.url)),
+    ...captured.filter(c => !/review/i.test(c.url)),
+  ];
+
+  for (const { url, json } of sorted) {
+    const candidates = extractReviews(json);
+    if (candidates.length) {
+      console.log(`  └ ${url.slice(0, 80)}... → ${candidates.length}개 후보`);
+    }
+    for (const raw of candidates) {
+      const r = normalizeReview(raw, gameName);
+      if (r && !seenIds.has(r.id)) {
+        seenIds.add(r.id);
+        reviews.push(r);
+      }
+    }
   }
 
   return reviews;
@@ -223,20 +218,19 @@ try {
   existing = JSON.parse(await readFile(reviewsPath, "utf-8")).reviews || [];
 } catch { /* 없으면 빈 배열 */ }
 
-const existingIds = new Set(existing.map((r) => r.id));
-const newReviews = [];
+const existingIds = new Set(existing.map(r => r.id));
+const newReviews  = [];
 
 for (const app of ONESTORE_APPS) {
   console.log(`\n[${app.game}] OneStore 수집 중...`);
   const fetched = await scrapeApp(app.appId, app.game);
-  const fresh = fetched.filter((r) => !existingIds.has(r.id));
+  const fresh   = fetched.filter(r => !existingIds.has(r.id));
   console.log(`  수집: ${fetched.length}개 / 신규: ${fresh.length}개`);
   newReviews.push(...fresh);
 }
 
-// 기존 리뷰(non-onestore) + 기존 onestore 최신 + 신규 병합
-const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-const merged = [...existing, ...newReviews].filter((r) => !r.date || r.date >= cutoff);
+const cutoff = ONE_YEAR_AGO.toISOString().slice(0,10);
+const merged  = [...existing, ...newReviews].filter(r => !r.date || r.date >= cutoff);
 
 await writeFile(reviewsPath, JSON.stringify({ generatedAt: new Date().toISOString(), reviews: merged }));
 console.log(`\n✓ OneStore 리뷰 ${newReviews.length}개 추가, 총 ${merged.length}개 저장`);
