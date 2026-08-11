@@ -879,20 +879,27 @@ function renderSummary() {
     const t = text || "";
     SUMMARY_SECTIONS.forEach((label, i) => {
       const next = SUMMARY_SECTIONS[i + 1];
-      // 신 포맷: [주요 이슈]
-      const re1 = new RegExp(
-        `\\[${label}\\]\\s*([\\s\\S]*?)${next ? `(?=\\[${next}\\])` : "$"}`,
-        "i"
-      );
-      const m1 = t.match(re1);
-      if (m1) { result[label] = m1[1].trim(); return; }
-      // 구 포맷 fallback: **주요 이슈**: 또는 **주요 이슈**
-      const re2 = new RegExp(
-        `\\*\\*${label}\\*\\*:?\\s*([\\s\\S]*?)${next ? `(?=\\*\\*${next}\\*\\*)` : "$"}`,
-        "i"
-      );
-      const m2 = t.match(re2);
-      result[label] = m2 ? m2[1].trim() : "";
+      // 다음 섹션 lookahead — 어떤 포맷이든 감지
+      const nextLook = next
+        ? `(?=(?:#+\\s*)?(?:\\*{1,2})?\\[?${next}\\]?(?:\\*{1,2})?)`
+        : "$";
+
+      const patterns = [
+        // [주요 이슈]
+        new RegExp(`\\[${label}\\]\\s*([\\s\\S]*?)${nextLook}`, "i"),
+        // ## [주요 이슈] / ### [주요 이슈]
+        new RegExp(`#+\\s*\\[${label}\\]\\s*([\\s\\S]*?)${nextLook}`, "i"),
+        // **[주요 이슈]** / **주요 이슈**
+        new RegExp(`\\*{1,2}\\[?${label}\\]?\\*{1,2}:?\\s*([\\s\\S]*?)${nextLook}`, "i"),
+        // 주요 이슈: (콜론만)
+        new RegExp(`${label}:\\s*([\\s\\S]*?)${nextLook}`, "i"),
+      ];
+
+      for (const re of patterns) {
+        const m = t.match(re);
+        if (m?.[1]?.trim()) { result[label] = m[1].trim(); return; }
+      }
+      result[label] = "";
     });
     return result;
   }
@@ -924,7 +931,9 @@ function renderSummary() {
           ? `<p class="summary-empty-msg">수집된 게시글이 없습니다.</p>`
           : data.error
             ? `<p class="summary-error">⚠ AI 요약 실패 — 다음 실행 시 재시도됩니다.<br><small>${escapeHtml(data.error.slice(0, 120))}</small></p>`
-            : `<p class="summary-error">⚠ AI 요약을 생성하지 못했습니다. 다음 실행 시 재시도됩니다.</p>`;
+            : data.summary
+              ? `<p class="summary-section-body" style="white-space:pre-wrap">${escapeHtml(data.summary)}</p>`
+              : `<p class="summary-error">⚠ AI 요약을 생성하지 못했습니다. 다음 실행 시 재시도됩니다.</p>`;
       return `
         <div class="summary-card" style="border-left-color:${color}">
           <div class="summary-card-head">
