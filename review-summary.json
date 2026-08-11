@@ -1,23 +1,23 @@
 {
-  "generatedAt": "2026-08-11T05:46:08.950Z",
+  "generatedAt": "2026-08-11T23:49:14.752Z",
   "from": "2026-07-12",
   "to": "2026-08-11",
   "summaries": [
     {
       "game": "대항해시대 오리진",
-      "reviewCount": 12,
-      "posCount": 7,
-      "negCount": 4,
-      "avgRating": 3.4,
+      "reviewCount": 18,
+      "posCount": 10,
+      "negCount": 7,
+      "avgRating": 3.2,
       "positive": null,
       "negative": null,
       "urgent": null
     },
     {
       "game": "언디셈버",
-      "reviewCount": 54,
-      "posCount": 14,
-      "negCount": 38,
+      "reviewCount": 56,
+      "posCount": 15,
+      "negCount": 39,
       "avgRating": 2.1,
       "positive": null,
       "negative": null,
