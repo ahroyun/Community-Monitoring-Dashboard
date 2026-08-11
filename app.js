@@ -15,6 +15,7 @@ const state = {
   patches: null,
   summaryPeriod: "daily",
   reviewSentiment: "all",
+  reviewStore: "all",
   view: "feed",
   game: ALL,
   reviewGame: ALL,
@@ -761,6 +762,25 @@ function renderReviews() {
     btn.addEventListener("click", () => { state.reviewSentiment = btn.dataset.sent; renderReviews(); });
   });
 
+  // ── 스토어 필터 ───────────────────────────────────
+  const storeEl = document.querySelector("#reviewStoreFilter");
+  const STORE_OPTIONS = [
+    { key: "all",        label: "전체" },
+    { key: "google_play", label: "구글플레이" },
+    { key: "app_store",   label: "앱스토어" },
+    { key: "steam",       label: "Steam" },
+    { key: "onestore",    label: "원스토어" },
+  ];
+  const gameFiltered = state.reviewGame === ALL ? allReviews : allReviews.filter((r) => r.game === state.reviewGame);
+  storeEl.innerHTML = STORE_OPTIONS.map(({ key, label }) => {
+    const cnt = key === "all" ? gameFiltered.length : gameFiltered.filter((r) => r.store === key).length;
+    if (cnt === 0 && key !== "all") return "";
+    return `<button class="review-store-btn ${state.reviewStore === key ? "active" : ""}" type="button" data-store="${key}">${label} <small>${cnt}</small></button>`;
+  }).join("");
+  storeEl.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => { state.reviewStore = btn.dataset.store; renderReviews(); });
+  });
+
   if (!allReviews.length) {
     feedEl.innerHTML = `<div class="review-empty">아직 수집된 리뷰가 없습니다.<br>GitHub Actions에서 "Update Store Reviews" 워크플로우를 수동 실행해 주세요.</div>`;
     return;
@@ -769,6 +789,9 @@ function renderReviews() {
   // ── 필터 + 정렬 ───────────────────────────────────
   const cutoff = get30DayCutoff();
   let reviews = state.reviewGame === ALL ? allReviews : allReviews.filter((r) => r.game === state.reviewGame);
+  if (state.reviewStore !== "all") {
+    reviews = reviews.filter((r) => r.store === state.reviewStore);
+  }
   if (state.reviewSentiment !== "all") {
     reviews = reviews.filter((r) => reviewSentiment(r) === state.reviewSentiment);
   }
