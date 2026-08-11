@@ -1125,11 +1125,17 @@ button:hover {
 
 .review-feed-head {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.review-filter-top {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 18px;
 }
 
 .review-game-filter {
@@ -1158,6 +1164,29 @@ button:hover {
 .review-sent-btn[data-sent="all"].active    { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
 .review-sent-btn[data-sent="positive"].active { background: #dcfce7; color: #166534; border-color: #86efac; font-weight: 700; }
 .review-sent-btn[data-sent="negative"].active { background: #fee2e2; color: #991b1b; border-color: #fca5a5; font-weight: 700; }
+
+.review-store-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.review-store-btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+.review-store-btn small { margin-left: 4px; opacity: 0.7; }
+.review-store-btn[data-store="all"].active       { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+.review-store-btn[data-store="google_play"].active { background: #e6f4ea; color: #1a6e2e; border-color: #82c991; font-weight: 700; }
+.review-store-btn[data-store="app_store"].active   { background: #e3f0fc; color: #0a4d8c; border-color: #7ab8f5; font-weight: 700; }
+.review-store-btn[data-store="steam"].active       { background: #e8eaf0; color: #1b2838; border-color: #8899aa; font-weight: 700; }
+.review-store-btn[data-store="onestore"].active    { background: #fff0e6; color: #b34700; border-color: #ffaa66; font-weight: 700; }
 
 /* 리뷰 피드 */
 .review-feed {
