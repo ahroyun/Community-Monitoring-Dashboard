@@ -765,11 +765,10 @@ function renderReviews() {
   // ── 스토어 필터 ───────────────────────────────────
   const storeEl = document.querySelector("#reviewStoreFilter");
   const STORE_OPTIONS = [
-    { key: "all",        label: "전체" },
+    { key: "all",         label: "전체" },
     { key: "google_play", label: "구글플레이" },
     { key: "app_store",   label: "앱스토어" },
     { key: "steam",       label: "Steam" },
-    { key: "onestore",    label: "원스토어" },
   ];
   const gameFiltered = state.reviewGame === ALL ? allReviews : allReviews.filter((r) => r.game === state.reviewGame);
   storeEl.innerHTML = STORE_OPTIONS.map(({ key, label }) => {
