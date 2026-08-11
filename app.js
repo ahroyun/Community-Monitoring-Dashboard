@@ -920,9 +920,11 @@ function renderSummary() {
               <p class="summary-section-body">${escapeHtml(content)}</p>
             </div>`;
           }).join("")
-        : data.error
-          ? `<p class="summary-error">⚠ 요약 생성 실패: ${escapeHtml(data.error)}</p>`
-          : `<p class="summary-empty-msg">수집된 게시글이 없습니다.</p>`;
+        : (data.postCount || 0) === 0
+          ? `<p class="summary-empty-msg">수집된 게시글이 없습니다.</p>`
+          : data.error
+            ? `<p class="summary-error">⚠ AI 요약 실패 — 다음 실행 시 재시도됩니다.<br><small>${escapeHtml(data.error.slice(0, 120))}</small></p>`
+            : `<p class="summary-error">⚠ AI 요약을 생성하지 못했습니다. 다음 실행 시 재시도됩니다.</p>`;
       return `
         <div class="summary-card" style="border-left-color:${color}">
           <div class="summary-card-head">
