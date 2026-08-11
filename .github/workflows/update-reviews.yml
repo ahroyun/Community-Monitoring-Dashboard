@@ -19,17 +19,10 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install google-play-scraper playwright
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npm install google-play-scraper
 
       - name: Fetch store reviews
         run: node scripts/fetch-reviews.js
-
-      - name: Fetch OneStore reviews
-        run: node scripts/fetch-onestore-reviews.js
-        continue-on-error: true
 
       - name: Generate review summary
         env:
