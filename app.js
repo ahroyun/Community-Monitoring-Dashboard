@@ -444,6 +444,8 @@ function parseCommunity(community) {
 
 function renderFeed() {
   const posts = filteredPosts();
+  const feedCountEl = document.getElementById("feedCount");
+  if (feedCountEl) feedCountEl.textContent = `${posts.length.toLocaleString("ko-KR")}개`;
   if (!posts.length) {
     els.feed.innerHTML = `<div class="empty">조건에 맞는 게시글이 없습니다.</div>`;
     return;
