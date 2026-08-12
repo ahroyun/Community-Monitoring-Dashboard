@@ -8,54 +8,45 @@ const GAMES = ["대항해시대 오리진", "언디셈버", "창세기전 모바
 const API_KEY = process.env.GEMINI_API_KEY;
 
 // ── Gemini API 호출 ───────────────────────────────────
+const BODY = (prompt) => JSON.stringify({
+  contents: [{ parts: [{ text: prompt }] }],
+  generationConfig: { maxOutputTokens: 1024, responseMimeType: "application/json" }
+});
+
 async function callGemini(prompt) {
-  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"];
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite-preview-06-17"];
   let lastErr;
   for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 1024 }
-        }),
-        signal: AbortSignal.timeout(30000)
-      });
-      if (!res.ok) {
-        const err = await res.text().catch(() => "");
-        lastErr = new Error(`Gemini API ${res.status} (${model}): ${err.slice(0, 200)}`);
-        console.warn(`  [${model}] 실패:`, lastErr.message);
-        // 429 rate limit → 30초 대기 후 같은 모델 재시도
-        if (res.status === 429) {
-          console.warn(`  rate limit — 30초 대기 후 재시도...`);
-          await new Promise(r => setTimeout(r, 30000));
-          const retry = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { maxOutputTokens: 1024 }
-            }),
-            signal: AbortSignal.timeout(30000)
-          });
-          if (retry.ok) {
-            const data = await retry.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-            if (text) { console.log(`  → 모델 사용: ${model} (재시도)`); return text; }
-          }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.warn(`  60초 대기 후 재시도...`);
+          await new Promise(r => setTimeout(r, 60000));
         }
-        continue;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: BODY(prompt),
+          signal: AbortSignal.timeout(30000)
+        });
+        if (!res.ok) {
+          const err = await res.text().catch(() => "");
+          lastErr = new Error(`Gemini API ${res.status} (${model}): ${err.slice(0, 200)}`);
+          console.warn(`  [${model}] 실패:`, lastErr.message);
+          if (res.status === 429 && attempt === 0) continue; // 재시도
+          break; // 다른 에러 or 2번째 실패 → 다음 모델
+        }
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        if (!text) { lastErr = new Error(`Empty response (${model})`); break; }
+        console.log(`  → 모델 사용: ${model}`);
+        return text;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`  [${model}] 예외:`, e.message);
+        break;
       }
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-      if (!text) { lastErr = new Error(`Empty response (${model})`); continue; }
-      console.log(`  → 모델 사용: ${model}`);
-      return text;
-    } catch (e) {
-      lastErr = e;
-      console.warn(`  [${model}] 예외:`, e.message);
     }
   }
   throw lastErr || new Error("모든 모델 실패");
