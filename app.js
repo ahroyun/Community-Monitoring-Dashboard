@@ -731,7 +731,7 @@ function renderReviewSummary() {
         <span class="review-summary-label neg">부정</span>
         <span>${escapeHtml(data.negative)}</span>
       </div>` : ""}
-      ${!data.positive && !data.negative ? `<div class="review-summary-empty-small">리뷰 없음</div>` : ""}
+      ${!data.positive && !data.negative ? `<div class="review-summary-empty-small">${total > 0 ? "AI 요약 생성 실패 — 다음 실행 시 재시도됩니다" : "리뷰 없음"}</div>` : ""}
     </div>`;
   }).join("");
 }
