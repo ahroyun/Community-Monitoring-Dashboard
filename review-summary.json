@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T02:16:24.801Z",
+  "generatedAt": "2026-08-12T02:22:47.297Z",
   "from": "2026-07-13",
   "to": "2026-08-12",
   "summaries": [
@@ -9,7 +9,7 @@
       "posCount": 10,
       "negCount": 7,
       "avgRating": 3.2,
-      "positive": "원작 향수 자극 및 스토리 유사성, 나만의 속도로 즐길 수",
+      "positive": null,
       "negative": null,
       "urgent": null
     },
