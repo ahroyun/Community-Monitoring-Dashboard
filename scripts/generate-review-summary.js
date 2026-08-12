@@ -9,23 +9,37 @@ const API_KEY = process.env.GEMINI_API_KEY;
 
 // ── Gemini API 호출 ───────────────────────────────────
 async function callGemini(prompt) {
-  const model = "gemini-2.0-flash-lite";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 400 }
-    }),
-    signal: AbortSignal.timeout(30000)
-  });
-  if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Gemini API ${res.status}: ${err.slice(0, 200)}`);
+  const models = ["gemini-2.5-flash", "gemini-1.5-flash"];
+  let lastErr;
+  for (const model of models) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 600 }
+        }),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (!res.ok) {
+        const err = await res.text().catch(() => "");
+        lastErr = new Error(`Gemini API ${res.status} (${model}): ${err.slice(0, 200)}`);
+        console.warn(`  [${model}] 실패:`, lastErr.message);
+        continue;
+      }
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      if (!text) { lastErr = new Error(`Empty response (${model})`); continue; }
+      console.log(`  → 모델 사용: ${model}`);
+      return text;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`  [${model}] 예외:`, e.message);
+    }
   }
-  const data = await res.json();
-  return data.candidates[0].content.parts[0].text.trim();
+  throw lastErr || new Error("모든 모델 실패");
 }
 
 // ── 게임별 요약 생성 ──────────────────────────────────
