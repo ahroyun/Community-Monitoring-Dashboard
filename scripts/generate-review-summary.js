@@ -7,6 +7,33 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const GAMES = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
 const API_KEY = process.env.GEMINI_API_KEY;
 
+// ── 사용 가능한 모델 동적 조회 ────────────────────────
+async function getAvailableModels() {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.models || [])
+    .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+    .map((m) => m.name.replace("models/", ""));
+}
+
+const PREFERRED_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-3.5-flash",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
+];
+const availableModels = await getAvailableModels();
+console.log("사용 가능한 모델:", availableModels.join(", ") || "(조회 실패)");
+const GEMINI_MODELS = PREFERRED_MODELS.filter(
+  (m) => availableModels.length === 0 || availableModels.includes(m)
+);
+if (!GEMINI_MODELS.length) GEMINI_MODELS.push("gemini-2.5-flash"); // 최후 보루
+console.log("사용할 모델 목록:", GEMINI_MODELS.join(", "));
+
 // ── Gemini API 호출 ───────────────────────────────────
 const BODY = (prompt) => JSON.stringify({
   contents: [{ parts: [{ text: prompt }] }],
@@ -14,16 +41,10 @@ const BODY = (prompt) => JSON.stringify({
 });
 
 async function callGemini(prompt) {
-  const model = "gemini-2.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (const model of GEMINI_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
     try {
-      if (attempt > 0) {
-        const wait = attempt * 60000;
-        console.warn(`  ${wait / 1000}초 대기 후 재시도 (${attempt}/2)...`);
-        await new Promise(r => setTimeout(r, wait));
-      }
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,23 +53,25 @@ async function callGemini(prompt) {
       });
       if (!res.ok) {
         const err = await res.text().catch(() => "");
-        lastErr = new Error(`Gemini API ${res.status}: ${err.slice(0, 200)}`);
+        lastErr = new Error(`Gemini API ${res.status} (${model}): ${err.slice(0, 120)}`);
         console.warn(`  [${model}] 실패 (${res.status})`);
-        if (res.status !== 429) break; // 429 아니면 재시도 안 함
+        if (res.status === 429) {
+          console.warn(`  rate limit — 15초 대기 후 다음 모델...`);
+          await new Promise(r => setTimeout(r, 15000));
+        }
         continue;
       }
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-      if (!text) { lastErr = new Error("Empty response"); break; }
+      if (!text) { lastErr = new Error(`Empty response (${model})`); continue; }
       console.log(`  → 모델 사용: ${model}`);
       return text;
     } catch (e) {
       lastErr = e;
       console.warn(`  [${model}] 예외:`, e.message);
-      break;
     }
   }
-  throw lastErr || new Error("요약 실패");
+  throw lastErr || new Error("모든 모델 실패");
 }
 
 // ── 게임별 요약 생성 ──────────────────────────────────
