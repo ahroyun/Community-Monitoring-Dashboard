@@ -60,28 +60,25 @@ async function summarizeGame(game, reviews) {
 
 ${reviewText}
 
-위 리뷰들을 분석하여 정확히 아래 형식으로만 응답해주세요. 각 항목은 핵심 키워드 중심으로 2줄 이내 간결하게.
+아래 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만 출력하세요.
+각 값은 한국어로 핵심 내용을 1~2문장으로 요약하세요.
+즉각 대응이 필요한 심각한 이슈가 없으면 urgent는 null로 하세요.
 
-긍정: (주요 긍정 반응 요약)
-부정: (주요 부정 반응 요약)
-긴급: (즉각 대응이 필요한 심각한 이슈가 있으면 1줄, 없으면 "없음")`;
+{"positive":"긍정 반응 요약","negative":"부정 반응 요약","urgent":null}`;
 
   try {
-    const text = await callGemini(prompt);
-    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-    const get = (prefix) => {
-      const line = lines.find(l => l.startsWith(prefix));
-      if (!line) return null;
-      const val = line.slice(prefix.length).trim();
-      return val === "없음" ? null : val || null;
-    };
+    const raw = await callGemini(prompt);
+    // ```json ... ``` 래핑 제거
+    const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const parsed = JSON.parse(text);
+    const clean = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
     return {
-      positive: get("긍정:"),
-      negative: get("부정:"),
-      urgent:   get("긴급:")
+      positive: clean(parsed.positive),
+      negative: clean(parsed.negative),
+      urgent:   clean(parsed.urgent)
     };
   } catch (err) {
-    console.error(`  [${game}] Claude 요약 실패:`, err.message);
+    console.error(`  [${game}] 요약 실패:`, err.message);
     return { positive: null, negative: null, urgent: null };
   }
 }
