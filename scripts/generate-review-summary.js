@@ -14,42 +14,41 @@ const BODY = (prompt) => JSON.stringify({
 });
 
 async function callGemini(prompt) {
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite-preview-06-17"];
+  const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
   let lastErr;
-  for (const model of models) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.warn(`  60초 대기 후 재시도...`);
-          await new Promise(r => setTimeout(r, 60000));
-        }
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: BODY(prompt),
-          signal: AbortSignal.timeout(30000)
-        });
-        if (!res.ok) {
-          const err = await res.text().catch(() => "");
-          lastErr = new Error(`Gemini API ${res.status} (${model}): ${err.slice(0, 200)}`);
-          console.warn(`  [${model}] 실패:`, lastErr.message);
-          if (res.status === 429 && attempt === 0) continue; // 재시도
-          break; // 다른 에러 or 2번째 실패 → 다음 모델
-        }
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-        if (!text) { lastErr = new Error(`Empty response (${model})`); break; }
-        console.log(`  → 모델 사용: ${model}`);
-        return text;
-      } catch (e) {
-        lastErr = e;
-        console.warn(`  [${model}] 예외:`, e.message);
-        break;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) {
+        const wait = attempt * 60000;
+        console.warn(`  ${wait / 1000}초 대기 후 재시도 (${attempt}/2)...`);
+        await new Promise(r => setTimeout(r, wait));
       }
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: BODY(prompt),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (!res.ok) {
+        const err = await res.text().catch(() => "");
+        lastErr = new Error(`Gemini API ${res.status}: ${err.slice(0, 200)}`);
+        console.warn(`  [${model}] 실패 (${res.status})`);
+        if (res.status !== 429) break; // 429 아니면 재시도 안 함
+        continue;
+      }
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      if (!text) { lastErr = new Error("Empty response"); break; }
+      console.log(`  → 모델 사용: ${model}`);
+      return text;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`  [${model}] 예외:`, e.message);
+      break;
     }
   }
-  throw lastErr || new Error("모든 모델 실패");
+  throw lastErr || new Error("요약 실패");
 }
 
 // ── 게임별 요약 생성 ──────────────────────────────────
@@ -80,7 +79,24 @@ ${reviewText}
     const raw = await callGemini(prompt);
     // ```json ... ``` 래핑 제거
     const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    const parsed = JSON.parse(text);
+
+    // JSON 문자열 값 안의 리터럴 줄바꿈 이스케이프 후 파싱
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // 문자 단위로 스캔해 string 내부 줄바꿈을 \n으로 치환
+      let fixed = "";
+      let inStr = false, esc = false;
+      for (const ch of text) {
+        if (esc)          { fixed += ch; esc = false; continue; }
+        if (ch === "\\")  { fixed += ch; esc = true;  continue; }
+        if (ch === '"')   { fixed += ch; inStr = !inStr; continue; }
+        if (inStr && (ch === "\n" || ch === "\r")) { fixed += "\\n"; continue; }
+        fixed += ch;
+      }
+      parsed = JSON.parse(fixed);
+    }
     const clean = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
     return {
       positive: clean(parsed.positive),
