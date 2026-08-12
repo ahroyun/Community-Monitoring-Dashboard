@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-11T23:49:14.752Z",
-  "from": "2026-07-12",
-  "to": "2026-08-11",
+  "generatedAt": "2026-08-12T02:16:24.801Z",
+  "from": "2026-07-13",
+  "to": "2026-08-12",
   "summaries": [
     {
       "game": "대항해시대 오리진",
@@ -9,15 +9,15 @@
       "posCount": 10,
       "negCount": 7,
       "avgRating": 3.2,
-      "positive": null,
+      "positive": "원작 향수 자극 및 스토리 유사성, 나만의 속도로 즐길 수",
       "negative": null,
       "urgent": null
     },
     {
       "game": "언디셈버",
-      "reviewCount": 56,
-      "posCount": 15,
-      "negCount": 39,
+      "reviewCount": 52,
+      "posCount": 14,
+      "negCount": 36,
       "avgRating": 2.1,
       "positive": null,
       "negative": null,
@@ -25,10 +25,10 @@
     },
     {
       "game": "창세기전 모바일",
-      "reviewCount": 9,
+      "reviewCount": 8,
       "posCount": 4,
-      "negCount": 4,
-      "avgRating": 3,
+      "negCount": 3,
+      "avgRating": 3.1,
       "positive": null,
       "negative": null,
       "urgent": null
