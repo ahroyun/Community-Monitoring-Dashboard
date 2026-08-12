@@ -9,7 +9,7 @@ const API_KEY = process.env.GEMINI_API_KEY;
 
 // ── Gemini API 호출 ───────────────────────────────────
 async function callGemini(prompt) {
-  const models = ["gemini-2.5-flash", "gemini-1.5-flash"];
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"];
   let lastErr;
   for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
@@ -19,7 +19,7 @@ async function callGemini(prompt) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 600 }
+          generationConfig: { maxOutputTokens: 1024 }
         }),
         signal: AbortSignal.timeout(30000)
       });
@@ -27,6 +27,25 @@ async function callGemini(prompt) {
         const err = await res.text().catch(() => "");
         lastErr = new Error(`Gemini API ${res.status} (${model}): ${err.slice(0, 200)}`);
         console.warn(`  [${model}] 실패:`, lastErr.message);
+        // 429 rate limit → 30초 대기 후 같은 모델 재시도
+        if (res.status === 429) {
+          console.warn(`  rate limit — 30초 대기 후 재시도...`);
+          await new Promise(r => setTimeout(r, 30000));
+          const retry = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { maxOutputTokens: 1024 }
+            }),
+            signal: AbortSignal.timeout(30000)
+          });
+          if (retry.ok) {
+            const data = await retry.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+            if (text) { console.log(`  → 모델 사용: ${model} (재시도)`); return text; }
+          }
+        }
         continue;
       }
       const data = await res.json();
@@ -132,7 +151,7 @@ for (const game of GAMES) {
   summaries.push({ game, reviewCount: gameReviews.length, posCount, negCount, avgRating, positive, negative, urgent });
 
   if (GAMES.indexOf(game) < GAMES.length - 1) {
-    await new Promise(r => setTimeout(r, 1000)); // rate limit
+    await new Promise(r => setTimeout(r, 5000)); // rate limit 방지
   }
 }
 
