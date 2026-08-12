@@ -1,112 +1,33 @@
-<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>커뮤니티 모니터</title>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-81Q2H74XHT"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-81Q2H74XHT');
-    </script>
-    <link rel="stylesheet" href="./styles.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  </head>
-  <body>
-    <main class="shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">커뮤니티 모니터</p>
-          <h1>게임 커뮤니티 실시간 동향</h1>
-        </div>
-        <div class="actions">
-          <label class="search">
-            <span>검색</span>
-            <input id="searchInput" type="search" placeholder="키워드, 게임, 커뮤니티">
-          </label>
-          <div class="refresh-box">
-            <button id="exportButton" type="button" title="2주 데이터 엑셀 내보내기">
-              <span class="icon">↓</span>
-              2주 내보내기
-            </button>
-            <button id="refreshButton" type="button" title="새로고침">
-              <span class="icon">↻</span>
-              새로고침
-            </button>
-            <span id="refreshTime" class="refresh-time">마지막 갱신 -</span>
-          </div>
-        </div>
-      </header>
-
-      <section class="insight-strip" id="insightCards" aria-label="커뮤니티 인사이트"></section>
-
-      <div class="main-tabs">
-        <button class="main-tab active" data-view="feed">실시간 피드</button>
-        <button class="main-tab" data-view="summary">AI 요약</button>
-        <button class="main-tab" data-view="reviews">스토어 리뷰</button>
-      </div>
-
-      <div id="viewFeed">
-      <section class="heatmap-section">
-        <div class="heatmap-head">
-          <div>
-            <h2 style="margin-top:0">키워드 히트맵</h2>
-            <p class="hint">게임별 이슈 키워드 집중도 (2주 기준)</p>
-          </div>
-        </div>
-        <div id="heatmapPanel"></div>
-      </section>
-
-      <section class="workspace">
-        <aside class="left-panel">
-          <div class="panel-head">
-            <h2>게임</h2>
-            <button id="clearFilters" type="button">전체</button>
-          </div>
-          <div id="gameFilters" class="filter-list"></div>
-
-          <h2>감지 키워드</h2>
-          <div id="keywordCloud" class="keyword-cloud"></div>
-
-          <h2>감성 신호</h2>
-          <p class="hint">제목 키워드 기반의 참고 신호입니다.</p>
-          <div class="sentiment-bars">
-            <div class="sent-row">
-              <span class="sent-label">긍정</span>
-              <div class="bar-track"><div class="bar-fill pos-fill" id="positiveMeter" style="width:0%"></div></div>
-              <span class="bar-pct" id="positivePct">0%</span>
-            </div>
-            <div class="sent-row">
-              <span class="sent-label">중립</span>
-              <div class="bar-track"><div class="bar-fill neu-fill" id="neutralMeter" style="width:0%"></div></div>
-              <span class="bar-pct" id="neutralPct">0%</span>
-            </div>
-            <div class="sent-row">
-              <span class="sent-label">주의</span>
-              <div class="bar-track"><div class="bar-fill neg-fill" id="negativeMeter" style="width:0%"></div></div>
-              <span class="bar-pct" id="negativePct">0%</span>
-            </div>
-          </div>
-
-          <details class="source-memo">
-            <summary>수집 소스</summary>
-            <ul>
-              <li><b>대항해시대 오리진</b><br>FLOOR 자유게시판 (KR/US/JP/TW) / 네이버 카페 자유·건의 게시판 / DC</li>
-              <li><b>언디셈버</b><br>FLOOR 자유게시판 (KR/US/JP/TW) / DC</li>
-              <li><b>창세기전 모바일</b><br>게임라운지 자유 게시판·건의사항·오류제보 / DC</li>
-            </ul>
-          </details>
-        </aside>
-
-        <section class="feed-area">
-          <div class="feed-toolbar">
-            <div class="tabs" id="sourceTabs"></div>
+<div class="feed-toolbar">
+            <div class="tabs" id="sourceTabs">
+    <button class="tab active" type="button" data-source-type="전체">
+      전체
+    </button>
+  
+    <button class="tab " type="button" data-source-type="floor">
+      FLOOR
+    </button>
+  
+    <button class="tab " type="button" data-source-type="naverCafe">
+      네이버 카페
+    </button>
+  
+    <button class="tab " type="button" data-source-type="dcinside">
+      DC
+    </button>
+  
+    <button class="tab " type="button" data-source-type="naverGame">
+      게임라운지
+    </button>
+  
+    <button class="tab " type="button" data-source-type="global">
+      글로벌
+    </button>
+  </div>
             <div class="date-filter" id="dateFilter">
-              <button class="date-btn active" data-range="all">전체</button>
+              <button class="date-btn" data-range="all">전체</button>
               <button class="date-btn" data-range="today">오늘</button>
-              <button class="date-btn" data-range="yesterday">어제</button>
+              <button class="date-btn active" data-range="yesterday">어제</button>
               <button class="date-btn" data-range="week">7일</button>
             </div>
             <label class="toggle">
@@ -114,47 +35,3 @@
               <span>이슈 키워드만</span>
             </label>
           </div>
-          <div id="notice" class="notice" hidden></div>
-          <div id="feed" class="feed"></div>
-        </section>
-      </section>
-      </div><!-- /viewFeed -->
-
-      <div id="viewReviews" hidden>
-        <div class="review-layout">
-          <section class="review-feed-panel">
-            <div class="review-feed-head">
-              <div id="reviewGameFilter" class="review-game-filter"></div>
-              <div class="review-filter-row">
-                <div id="reviewStoreFilter" class="review-store-filter"></div>
-                <div id="reviewSentFilter" class="review-sent-filter"></div>
-              </div>
-            </div>
-            <div id="reviewFeed" class="review-feed"></div>
-          </section>
-          <aside class="review-summary-panel">
-            <div class="review-summary-header">
-              <span class="review-summary-title">최근 30일 요약</span>
-              <span id="reviewSummaryMeta" class="review-summary-meta"></span>
-            </div>
-            <div id="reviewSummaryContent"></div>
-          </aside>
-        </div>
-      </div>
-
-      <div id="viewSummary" hidden>
-        <section class="summary-section">
-          <div class="summary-tabs">
-            <button class="summary-tab active" data-period="daily">일간 요약</button>
-            <button class="summary-tab" data-period="weekly">주간 요약</button>
-          </div>
-          <div id="summaryContent" class="summary-content"></div>
-        </section>
-      </div>
-    </main>
-    <script src="./app.js" type="module"></script>
-    <footer style="text-align:center; padding: 24px 0 16px; color: #aaa; font-size: 12px;">
-      관리자 · 라이브기획팀 윤아로 (<a href="mailto:ar.yun@line.games" style="color:#aaa;">ar.yun@line.games</a>)
-    </footer>
-  </body>
-</html>
