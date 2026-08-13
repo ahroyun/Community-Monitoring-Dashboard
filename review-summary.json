@@ -1,23 +1,23 @@
 {
-  "generatedAt": "2026-08-12T23:49:47.758Z",
-  "from": "2026-07-13",
-  "to": "2026-08-12",
+  "generatedAt": "2026-08-13T03:04:09.519Z",
+  "from": "2026-07-14",
+  "to": "2026-08-13",
   "summaries": [
     {
       "game": "대항해시대 오리진",
-      "reviewCount": 21,
+      "reviewCount": 22,
       "posCount": 11,
-      "negCount": 8,
-      "avgRating": 3.2,
+      "negCount": 9,
+      "avgRating": 3.1,
       "positive": null,
       "negative": null,
       "urgent": null
     },
     {
       "game": "언디셈버",
-      "reviewCount": 54,
-      "posCount": 14,
-      "negCount": 38,
+      "reviewCount": 52,
+      "posCount": 13,
+      "negCount": 37,
       "avgRating": 2.1,
       "positive": null,
       "negative": null,
@@ -25,12 +25,12 @@
     },
     {
       "game": "창세기전 모바일",
-      "reviewCount": 9,
+      "reviewCount": 8,
       "posCount": 4,
-      "negCount": 3,
-      "avgRating": 3.1,
-      "positive": null,
-      "negative": null,
+      "negCount": 2,
+      "avgRating": 3.4,
+      "positive": "스토리 진행 난이도는 적절하며, 무과금으로도 컨텐츠와 이벤트를 통해 게임을 즐길 수 있다는 긍정적인 평가가 있습니다. 난이도가 도전 의식을 자극한다는 의견과 안드로이드 10 지원 요청도 있습니다.",
+      "negative": "캐릭터 레벨 공유 부재로 육성 부담이 크고, 원작의 대규모 유닛 전투가 없음을 아쉬워합니다. 특히 과금 유도가 심하고, 고각성/고발현을 위한 과도한 뽑기 시스템에 대한 불만이 많습니다.",
       "urgent": null
     }
   ]
