@@ -962,5 +962,146 @@ function renderTrendCharts() {
     </div>`;
 }
 
+
+// ── 메인 탭 (피드 / AI 요약) ────────────────────────
+const viewFeed    = document.querySelector("#viewFeed");
+const viewSummary = document.querySelector("#viewSummary");
+const viewReviews = document.querySelector("#viewReviews");
+const summaryContent = document.querySelector("#summaryContent");
+
+function renderSummary() {
+  if (!state.summary) {
+    summaryContent.innerHTML = `<div class="summary-empty">아직 생성된 요약이 없습니다.<br>매일 오전 9시에 자동 생성됩니다.<br><br>GitHub Actions에서 "Generate AI Summary" 워크플로우를 수동 실행하면 바로 확인할 수 있습니다.</div>`;
+    return;
+  }
+  const periodData = state.summary[state.summaryPeriod] || {};
+  const kstDate = state.summary.kstDate || "";
+  const kstYesterday = state.summary.kstYesterday || kstDate;
+  const prevWeekRange = (state.summary.prevWeekMon && state.summary.prevWeekSun)
+    ? `${state.summary.prevWeekMon} ~ ${state.summary.prevWeekSun}`
+    : `최근 7일 (${kstDate} 기준)`;
+  const generatedAt = state.summary.generatedAt
+    ? new Date(new Date(state.summary.generatedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " ")
+    : "";
+
+  const SUMMARY_SECTIONS = ["주요 이슈", "유저 반응", "주목할 키워드", "한줄 요약"];
+
+  function parseSummary(text) {
+    const result = {};
+    if (!text) return result;
+
+    // 라인 단위 파싱 — 섹션 헤더가 한 줄 전체인 경우를 감지
+    const lines = text.split(/\r?\n/);
+    let currentSection = null;
+    const buffer = [];
+
+    const isHeader = (line) => {
+      const t = line.trim();
+      return SUMMARY_SECTIONS.find((s) => {
+        const e = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`^(?:#+\\s*)?(?:\\*+)?\\[${e}\\](?:\\*+)?\\s*:?$`).test(t);
+      }) || null;
+    };
+
+    for (const line of lines) {
+      const section = isHeader(line);
+      if (section) {
+        if (currentSection) result[currentSection] = buffer.join("\n").trim();
+        currentSection = section;
+        buffer.length = 0;
+      } else if (currentSection) {
+        buffer.push(line);
+      }
+    }
+    if (currentSection) result[currentSection] = buffer.join("\n").trim();
+
+    SUMMARY_SECTIONS.forEach((s) => { if (!(s in result)) result[s] = ""; });
+    return result;
+  }
+
+  summaryContent.innerHTML = `
+    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstYesterday} 하루치` : prevWeekRange} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
+    ${Object.entries(periodData).map(([game, data]) => {
+      const color = GAME_COLORS[game] || "#666";
+      const sections = parseSummary(data.summary);
+      const hasContent = SUMMARY_SECTIONS.some((l) => sections[l]);
+      const totalViews = data.totalViews != null ? data.totalViews.toLocaleString("ko-KR") : "-";
+      const totalComments = data.totalComments != null ? data.totalComments.toLocaleString("ko-KR") : "-";
+      const statsHtml = `
+        <div class="summary-stats">
+          <span>📝 게시글 <strong>${data.postCount || 0}</strong>건</span>
+          <span>👁 총 조회 <strong>${totalViews}</strong>회</span>
+          <span>💬 총 댓글 <strong>${totalComments}</strong>개</span>
+        </div>`;
+      const bodyHtml = hasContent
+        ? SUMMARY_SECTIONS.map((label) => {
+            const content = sections[label];
+            if (!content) return "";
+            return `<div class="summary-row">
+              <span class="summary-section-label">${escapeHtml(label)}</span>
+              <p class="summary-section-body">${escapeHtml(content)}</p>
+            </div>`;
+          }).join("")
+        : (data.postCount || 0) === 0
+          ? `<p class="summary-empty-msg">수집된 게시글이 없습니다.</p>`
+          : data.error
+            ? `<p class="summary-error">⚠ AI 요약 실패 — 다음 실행 시 재시도됩니다.<br><small>${escapeHtml(data.error.slice(0, 120))}</small></p>`
+            : data.summary
+              ? `<p class="summary-section-body" style="white-space:pre-wrap">${escapeHtml(data.summary)}</p>`
+              : `<p class="summary-error">⚠ AI 요약을 생성하지 못했습니다. 다음 실행 시 재시도됩니다.</p>`;
+      return `
+        <div class="summary-card" style="border-left-color:${color}">
+          <div class="summary-card-head">
+            <span class="game-chip" data-game="${escapeHtml(game)}">${escapeHtml(game)}</span>
+          </div>
+          ${statsHtml}
+          <div class="summary-body">${bodyHtml}</div>
+        </div>`;
+    }).join("")}
+  `;
+}
+
+document.querySelectorAll(".main-tab").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.view = btn.dataset.view;
+    viewFeed.hidden    = state.view !== "feed";
+    viewSummary.hidden = state.view !== "summary";
+    viewReviews.hidden = state.view !== "reviews";
+    if (state.view === "summary") {
+      renderTrendCharts();
+      if (!state.summary) {
+        summaryContent.innerHTML = `<div class="summary-empty">요약 불러오는 중...</div>`;
+        state.summary = await fetchJson("summary.json").catch(() => null);
+      }
+      renderSummary();
+    }
+    if (state.view === "reviews") {
+      if (!state.reviews) {
+        document.querySelector("#reviewFeed").innerHTML = `<div class="review-empty">리뷰 불러오는 중...</div>`;
+        document.querySelector("#reviewSummaryContent").innerHTML = `<div class="review-summary-empty">불러오는 중...</div>`;
+        [state.reviews, state.reviewSummary, state.patches] = await Promise.all([
+          fetchJson("reviews.json").catch(() => null),
+          fetchJson("review-summary.json").catch(() => null),
+          fetchJson("patches.json").catch(() => null)
+        ]);
+      }
+      renderReviewSummary();
+      renderReviews();
+    }
+  });
+});
+
+document.querySelectorAll(".summary-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".summary-tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.summaryPeriod = btn.dataset.period;
+    renderTrendCharts();
+    renderSummary();
+  });
+});
+
 load();
 state.timer = window.setInterval(() => load(true), 60_000);
