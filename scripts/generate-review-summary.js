@@ -37,7 +37,11 @@ console.log("사용할 모델 목록:", GEMINI_MODELS.join(", "));
 // ── Gemini API 호출 ───────────────────────────────────
 const BODY = (prompt) => JSON.stringify({
   contents: [{ parts: [{ text: prompt }] }],
-  generationConfig: { maxOutputTokens: 1024, responseMimeType: "application/json" }
+  generationConfig: {
+    maxOutputTokens: 2048,
+    responseMimeType: "application/json",
+    thinkingConfig: { thinkingBudget: 0 }
+  }
 });
 
 async function callGemini(prompt) {
