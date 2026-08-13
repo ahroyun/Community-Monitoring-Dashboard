@@ -859,6 +859,101 @@ function renderReviews() {
   feedEl.innerHTML = html;
 }
 
+// ── 게시물 추이 차트 ─────────────────────────────────
+function renderTrendCharts() {
+  const el = document.getElementById("trendCharts");
+  if (!el) return;
+
+  const posts = state.history?.posts?.length ? state.history.posts : allPosts();
+  if (!posts.length) { el.innerHTML = ""; return; }
+
+  const GAME_LIST = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
+  const isDaily = state.summaryPeriod === "daily";
+  const toKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+  // KST 기준 날짜 계산
+  const kstNow = new Date(Date.now() + 9 * 3600000);
+  const yest = new Date(kstNow); yest.setUTCDate(yest.getUTCDate() - 1);
+  const kstYesterday = toKey(yest);
+
+  const dow = kstNow.getUTCDay();
+  const daysToLastSun = dow === 0 ? 7 : dow;
+  const prevSun = new Date(kstNow.getTime() - daysToLastSun * 86400000);
+  const prevMon = new Date(prevSun.getTime() - 6 * 86400000);
+  const prevWeekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(prevMon.getTime() + i * 86400000);
+    return d;
+  });
+  const prevWeekMonStr = toKey(prevMon);
+  const prevWeekSunStr = toKey(prevSun);
+
+  function barSvg(values, color, w, h) {
+    const max = Math.max(...values, 1);
+    const n = values.length;
+    const bw = Math.max(1, Math.floor((w - n + 1) / n));
+    const rects = values.map((v, i) => {
+      const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * h));
+      return `<rect x="${i*(bw+1)}" y="${h-bh}" width="${bw}" height="${bh}" fill="${color}" rx="1" opacity="${v > 0 ? "0.85" : "0.12"}"/>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${rects}</svg>`;
+  }
+
+  const subtitle = isDaily
+    ? `어제(${kstYesterday}) 시간대별`
+    : `전주(${prevWeekMonStr} ~ ${prevWeekSunStr}) 일별`;
+
+  el.innerHTML = `
+    <div class="trend-header">
+      <span class="trend-title">게시물 추이</span>
+      <span class="trend-subtitle">${subtitle}</span>
+    </div>
+    <div class="trend-games">
+      ${GAME_LIST.map(game => {
+        const gp = posts.filter(p => p.game === game);
+        const color = GAME_COLORS[game] || "#888";
+        let counts, axisHtml, chartW, statText;
+
+        if (isDaily) {
+          // 어제 시간대별 (0~23시)
+          counts = Array(24).fill(0);
+          gp.forEach(p => {
+            const d = parsePostDate(p);
+            if (d && toKey(d) === kstYesterday) counts[d.getHours()]++;
+          });
+          const total = counts.reduce((a, b) => a + b, 0);
+          const peak = counts.indexOf(Math.max(...counts));
+          statText = `${total}건 · 피크 ${peak}시`;
+          chartW = 264;
+          axisHtml = `<span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span>`;
+        } else {
+          // 전주 일별 (월~일)
+          counts = prevWeekDays.map(day =>
+            gp.filter(p => { const d = parsePostDate(p); return d && toKey(d) === toKey(day); }).length
+          );
+          const total = counts.reduce((a, b) => a + b, 0);
+          const DAY_NAMES = ["월","화","수","목","금","토","일"];
+          statText = `${total}건`;
+          chartW = 196;
+          axisHtml = prevWeekDays.map((d, i) =>
+            `<span>${DAY_NAMES[i]}<br>${d.getUTCMonth()+1}/${d.getUTCDate()}</span>`
+          ).join("");
+        }
+
+        return `<div class="trend-game-block">
+          <div class="trend-game-label">
+            <span class="trend-dot" style="background:${color}"></span>
+            <strong>${game}</strong>
+            <span class="trend-stat">${statText}</span>
+          </div>
+          <div class="trend-chart-item">
+            ${barSvg(counts, color, chartW, 44)}
+            <div class="trend-axis ${isDaily ? "trend-axis-24" : "trend-axis-7"}">${axisHtml}</div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+}
+
 // ── 메인 탭 (피드 / AI 요약) ────────────────────────
 const viewFeed    = document.querySelector("#viewFeed");
 const viewSummary = document.querySelector("#viewSummary");
@@ -965,9 +1060,12 @@ document.querySelectorAll(".main-tab").forEach((btn) => {
     viewFeed.hidden    = state.view !== "feed";
     viewSummary.hidden = state.view !== "summary";
     viewReviews.hidden = state.view !== "reviews";
-    if (state.view === "summary" && !state.summary) {
-      summaryContent.innerHTML = `<div class="summary-empty">요약 불러오는 중...</div>`;
-      state.summary = await fetchJson("summary.json").catch(() => null);
+    if (state.view === "summary") {
+      renderTrendCharts();
+      if (!state.summary) {
+        summaryContent.innerHTML = `<div class="summary-empty">요약 불러오는 중...</div>`;
+        state.summary = await fetchJson("summary.json").catch(() => null);
+      }
       renderSummary();
     }
     if (state.view === "reviews") {
@@ -991,6 +1089,7 @@ document.querySelectorAll(".summary-tab").forEach((btn) => {
     document.querySelectorAll(".summary-tab").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     state.summaryPeriod = btn.dataset.period;
+    renderTrendCharts();
     renderSummary();
   });
 });
