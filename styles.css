@@ -1208,7 +1208,41 @@ button:hover {
     padding: 16px;
     order: 2;
   }
-  .review-feed-panel { order: 1; }
+  .review-feed-panel {
+    order: 1;
+    padding: 14px 16px;
+  }
+
+  /* 게임 필터: 사이드바 스타일 override → 컴팩트 인라인 버튼 */
+  .review-game-filter .filter {
+    width: auto;
+    min-height: unset;
+    padding: 5px 12px;
+    font-size: 13px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .review-game-filter .filter.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .review-game-filter .filter small {
+    font-size: 11px;
+  }
+
+  /* 스토어·감성 필터 */
+  .review-store-btn,
+  .review-sent-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* 리뷰 카드 */
+  .review-card {
+    padding: 10px 12px;
+  }
 }
 
 .review-section {
