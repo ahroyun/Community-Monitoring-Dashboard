@@ -900,19 +900,39 @@ function renderTrendCharts() {
     return `${DAY_NAMES[i]}<br>${Number(m)}/${Number(day)}`;
   });
 
-  const VB_W = 200, VB_H = 60;
+  const VB_W = 200, VB_H = 56, AXIS_H = 16;
 
-  function barSvg(values, color) {
+  // 레이블을 SVG 안에 직접 배치 → 막대와 픽셀 단위로 정확히 정렬
+  function barSvg(values, color, tickIndices, tickLabels) {
     const n = values.length;
     const max = Math.max(...values, 1);
     const gap = n > 12 ? 1 : 3;
     const bw = (VB_W - gap * (n - 1)) / n;
+    const TOTAL_H = VB_H + AXIS_H;
+
     const rects = values.map((v, i) => {
-      const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VB_H));
+      const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * VB_H));
       const x = (i * (bw + gap)).toFixed(2);
-      return `<rect x="${x}" y="${VB_H-bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${color}" rx="1.5" opacity="${v > 0 ? 0.85 : 0.12}"/>`;
+      return `<rect x="${x}" y="${VB_H - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${color}" rx="1" opacity="${v > 0 ? 0.85 : 0.1}"/>`;
     }).join("");
-    return `<svg viewBox="0 0 ${VB_W} ${VB_H}" width="100%" height="${VB_H}" style="display:block">${rects}</svg>`;
+
+    // 구분선
+    const line = `<line x1="0" y1="${VB_H}" x2="${VB_W}" y2="${VB_H}" stroke="#e5e7eb" stroke-width="0.5"/>`;
+
+    // 틱 레이블: 막대 중심 x에 정확히 배치
+    const texts = tickIndices.map((idx, j) => {
+      const cx = (idx * (bw + gap) + bw / 2).toFixed(1);
+      const lines = String(tickLabels[j]).split("\n");
+      if (lines.length === 1) {
+        return `<text x="${cx}" y="${VB_H + 11}" text-anchor="middle" font-size="7.5" fill="#9ca3af">${lines[0]}</text>`;
+      }
+      return `<text text-anchor="middle" font-size="7" fill="#9ca3af">
+        <tspan x="${cx}" y="${VB_H + 9}">${lines[0]}</tspan>
+        <tspan x="${cx}" dy="7">${lines[1]}</tspan>
+      </text>`;
+    }).join("");
+
+    return `<svg viewBox="0 0 ${VB_W} ${TOTAL_H}" width="100%" style="display:block;overflow:visible">${line}${rects}${texts}</svg>`;
   }
 
   const subtitle = isDaily
@@ -928,7 +948,7 @@ function renderTrendCharts() {
       ${GAME_LIST.map(game => {
         const gp = posts.filter(p => p.game === game);
         const color = GAME_COLORS[game] || "#888";
-        let counts, axisHtml, statText;
+        let counts, tickIndices, tickLabels, statText;
 
         if (isDaily) {
           counts = Array(24).fill(0);
@@ -939,14 +959,19 @@ function renderTrendCharts() {
           const total = counts.reduce((a, b) => a + b, 0);
           const peak = total > 0 ? counts.indexOf(Math.max(...counts)) : null;
           statText = `${total}건${peak !== null ? ` · 피크 ${peak}시` : ""}`;
-          axisHtml = `<span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span>`;
+          tickIndices = [0, 6, 12, 18, 23];
+          tickLabels  = ["0시", "6시", "12시", "18시", "23시"];
         } else {
           counts = prevWeekDayKeys.map(key =>
             gp.filter(p => { const d = parsePostDate(p); return d && toKey(d) === key; }).length
           );
           const total = counts.reduce((a, b) => a + b, 0);
           statText = `${total}건`;
-          axisHtml = prevWeekDayLabels.map(l => `<span>${l}</span>`).join("");
+          tickIndices = [0, 1, 2, 3, 4, 5, 6];
+          tickLabels  = prevWeekDayKeys.map((k, i) => {
+            const [, m, day] = k.split("-");
+            return `${DAY_NAMES[i]}\n${Number(m)}/${Number(day)}`;
+          });
         }
 
         return `<div class="trend-game-col">
@@ -955,8 +980,7 @@ function renderTrendCharts() {
             <strong>${game}</strong>
           </div>
           <div class="trend-stat-small">${statText}</div>
-          ${barSvg(counts, color)}
-          <div class="trend-axis ${isDaily ? "trend-axis-24" : "trend-axis-7"}">${axisHtml}</div>
+          ${barSvg(counts, color, tickIndices, tickLabels)}
         </div>`;
       }).join("")}
     </div>`;
