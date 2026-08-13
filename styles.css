@@ -951,9 +951,33 @@ button:hover {
     width: 100%;
   }
 
-  .insight-strip,
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  /* 인사이트 카드: 4열 유지, 내부 압축 */
+  .insight-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .insight-strip article {
+    min-height: unset;
+    padding: 10px 8px;
+  }
+
+  .insight-strip span {
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+
+  .insight-strip strong {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .insight-strip p {
+    font-size: 10px;
   }
 }
 
@@ -963,11 +987,23 @@ button:hover {
   }
 
   .insight-strip {
-    gap: 8px;
+    gap: 4px;
+  }
+
+  .insight-strip article {
+    padding: 8px 6px;
+  }
+
+  .insight-strip span {
+    font-size: 9px;
   }
 
   .insight-strip strong {
-    font-size: 23px;
+    font-size: 17px;
+  }
+
+  .insight-strip p {
+    display: none;
   }
 
   .post-top {
