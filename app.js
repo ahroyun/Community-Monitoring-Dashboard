@@ -869,33 +869,50 @@ function renderTrendCharts() {
 
   const GAME_LIST = ["대항해시대 오리진", "언디셈버", "창세기전 모바일"];
   const isDaily = state.summaryPeriod === "daily";
+
+  // KST 날짜를 UTC 메서드로 일관되게 처리
+  const toUTCKey = (ms) => {
+    const d = new Date(ms);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
+  };
   const toKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 
-  // KST 기준 날짜 계산
-  const kstNow = new Date(Date.now() + 9 * 3600000);
-  const yest = new Date(kstNow); yest.setUTCDate(yest.getUTCDate() - 1);
-  const kstYesterday = toKey(yest);
+  const kstYesterday = toUTCKey(Date.now() + (9*3600 - 86400)*1000);
 
-  const dow = kstNow.getUTCDay();
-  const daysToLastSun = dow === 0 ? 7 : dow;
-  const prevSun = new Date(kstNow.getTime() - daysToLastSun * 86400000);
-  const prevMon = new Date(prevSun.getTime() - 6 * 86400000);
-  const prevWeekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(prevMon.getTime() + i * 86400000);
-    return d;
+  // 전주 월~일: summary.json 값 우선, 없으면 직접 계산
+  let prevWeekMonStr, prevWeekSunStr;
+  if (state.summary?.prevWeekMon && state.summary?.prevWeekSun) {
+    prevWeekMonStr = state.summary.prevWeekMon;
+    prevWeekSunStr = state.summary.prevWeekSun;
+  } else {
+    const kstDow = new Date(Date.now() + 9*3600000).getUTCDay();
+    const daysToLastMon = ((kstDow - 1 + 7) % 7) + 7;
+    prevWeekMonStr = toUTCKey(Date.now() + (9*3600 - daysToLastMon*86400)*1000);
+    prevWeekSunStr = toUTCKey(Date.now() + (9*3600 - (daysToLastMon-6)*86400)*1000);
+  }
+  const monDate = new Date(prevWeekMonStr + "T00:00:00");
+  const DAY_NAMES = ["월","화","수","목","금","토","일"];
+  const prevWeekDayKeys = Array.from({length:7}, (_, i) => {
+    const d = new Date(monDate); d.setDate(d.getDate() + i); return toKey(d);
   });
-  const prevWeekMonStr = toKey(prevMon);
-  const prevWeekSunStr = toKey(prevSun);
+  const prevWeekDayLabels = prevWeekDayKeys.map((k, i) => {
+    const [, m, day] = k.split("-");
+    return `${DAY_NAMES[i]}<br>${Number(m)}/${Number(day)}`;
+  });
 
-  function barSvg(values, color, w, h) {
-    const max = Math.max(...values, 1);
+  const VB_W = 200, VB_H = 60;
+
+  function barSvg(values, color) {
     const n = values.length;
-    const bw = Math.max(1, Math.floor((w - n + 1) / n));
+    const max = Math.max(...values, 1);
+    const gap = n > 12 ? 1 : 3;
+    const bw = (VB_W - gap * (n - 1)) / n;
     const rects = values.map((v, i) => {
-      const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * h));
-      return `<rect x="${i*(bw+1)}" y="${h-bh}" width="${bw}" height="${bh}" fill="${color}" rx="1" opacity="${v > 0 ? "0.85" : "0.12"}"/>`;
+      const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VB_H));
+      const x = (i * (bw + gap)).toFixed(2);
+      return `<rect x="${x}" y="${VB_H-bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${color}" rx="1.5" opacity="${v > 0 ? 0.85 : 0.12}"/>`;
     }).join("");
-    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${rects}</svg>`;
+    return `<svg viewBox="0 0 ${VB_W} ${VB_H}" width="100%" height="${VB_H}" style="display:block">${rects}</svg>`;
   }
 
   const subtitle = isDaily
@@ -907,192 +924,43 @@ function renderTrendCharts() {
       <span class="trend-title">게시물 추이</span>
       <span class="trend-subtitle">${subtitle}</span>
     </div>
-    <div class="trend-games">
+    <div class="trend-games-row">
       ${GAME_LIST.map(game => {
         const gp = posts.filter(p => p.game === game);
         const color = GAME_COLORS[game] || "#888";
-        let counts, axisHtml, chartW, statText;
+        let counts, axisHtml, statText;
 
         if (isDaily) {
-          // 어제 시간대별 (0~23시)
           counts = Array(24).fill(0);
           gp.forEach(p => {
             const d = parsePostDate(p);
             if (d && toKey(d) === kstYesterday) counts[d.getHours()]++;
           });
           const total = counts.reduce((a, b) => a + b, 0);
-          const peak = counts.indexOf(Math.max(...counts));
-          statText = `${total}건 · 피크 ${peak}시`;
-          chartW = 264;
+          const peak = total > 0 ? counts.indexOf(Math.max(...counts)) : null;
+          statText = `${total}건${peak !== null ? ` · 피크 ${peak}시` : ""}`;
           axisHtml = `<span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span>`;
         } else {
-          // 전주 일별 (월~일)
-          counts = prevWeekDays.map(day =>
-            gp.filter(p => { const d = parsePostDate(p); return d && toKey(d) === toKey(day); }).length
+          counts = prevWeekDayKeys.map(key =>
+            gp.filter(p => { const d = parsePostDate(p); return d && toKey(d) === key; }).length
           );
           const total = counts.reduce((a, b) => a + b, 0);
-          const DAY_NAMES = ["월","화","수","목","금","토","일"];
           statText = `${total}건`;
-          chartW = 196;
-          axisHtml = prevWeekDays.map((d, i) =>
-            `<span>${DAY_NAMES[i]}<br>${d.getUTCMonth()+1}/${d.getUTCDate()}</span>`
-          ).join("");
+          axisHtml = prevWeekDayLabels.map(l => `<span>${l}</span>`).join("");
         }
 
-        return `<div class="trend-game-block">
+        return `<div class="trend-game-col">
           <div class="trend-game-label">
             <span class="trend-dot" style="background:${color}"></span>
             <strong>${game}</strong>
-            <span class="trend-stat">${statText}</span>
           </div>
-          <div class="trend-chart-item">
-            ${barSvg(counts, color, chartW, 44)}
-            <div class="trend-axis ${isDaily ? "trend-axis-24" : "trend-axis-7"}">${axisHtml}</div>
-          </div>
+          <div class="trend-stat-small">${statText}</div>
+          ${barSvg(counts, color)}
+          <div class="trend-axis ${isDaily ? "trend-axis-24" : "trend-axis-7"}">${axisHtml}</div>
         </div>`;
       }).join("")}
     </div>`;
 }
-
-// ── 메인 탭 (피드 / AI 요약) ────────────────────────
-const viewFeed    = document.querySelector("#viewFeed");
-const viewSummary = document.querySelector("#viewSummary");
-const viewReviews = document.querySelector("#viewReviews");
-const summaryContent = document.querySelector("#summaryContent");
-
-function renderSummary() {
-  if (!state.summary) {
-    summaryContent.innerHTML = `<div class="summary-empty">아직 생성된 요약이 없습니다.<br>매일 오전 9시에 자동 생성됩니다.<br><br>GitHub Actions에서 "Generate AI Summary" 워크플로우를 수동 실행하면 바로 확인할 수 있습니다.</div>`;
-    return;
-  }
-  const periodData = state.summary[state.summaryPeriod] || {};
-  const kstDate = state.summary.kstDate || "";
-  const kstYesterday = state.summary.kstYesterday || kstDate;
-  const prevWeekRange = (state.summary.prevWeekMon && state.summary.prevWeekSun)
-    ? `${state.summary.prevWeekMon} ~ ${state.summary.prevWeekSun}`
-    : `최근 7일 (${kstDate} 기준)`;
-  const generatedAt = state.summary.generatedAt
-    ? new Date(new Date(state.summary.generatedAt).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " ")
-    : "";
-
-  const SUMMARY_SECTIONS = ["주요 이슈", "유저 반응", "주목할 키워드", "한줄 요약"];
-
-  function parseSummary(text) {
-    const result = {};
-    if (!text) return result;
-
-    // 라인 단위 파싱 — 섹션 헤더가 한 줄 전체인 경우를 감지
-    const lines = text.split(/\r?\n/);
-    let currentSection = null;
-    const buffer = [];
-
-    const isHeader = (line) => {
-      const t = line.trim();
-      return SUMMARY_SECTIONS.find((s) => {
-        const e = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        return new RegExp(`^(?:#+\\s*)?(?:\\*+)?\\[${e}\\](?:\\*+)?\\s*:?$`).test(t);
-      }) || null;
-    };
-
-    for (const line of lines) {
-      const section = isHeader(line);
-      if (section) {
-        if (currentSection) result[currentSection] = buffer.join("\n").trim();
-        currentSection = section;
-        buffer.length = 0;
-      } else if (currentSection) {
-        buffer.push(line);
-      }
-    }
-    if (currentSection) result[currentSection] = buffer.join("\n").trim();
-
-    SUMMARY_SECTIONS.forEach((s) => { if (!(s in result)) result[s] = ""; });
-    return result;
-  }
-
-  summaryContent.innerHTML = `
-    <p class="summary-meta">📅 ${state.summaryPeriod === "daily" ? `${kstYesterday} 하루치` : prevWeekRange} &nbsp;·&nbsp; 생성: ${generatedAt} KST</p>
-    ${Object.entries(periodData).map(([game, data]) => {
-      const color = GAME_COLORS[game] || "#666";
-      const sections = parseSummary(data.summary);
-      const hasContent = SUMMARY_SECTIONS.some((l) => sections[l]);
-      const totalViews = data.totalViews != null ? data.totalViews.toLocaleString("ko-KR") : "-";
-      const totalComments = data.totalComments != null ? data.totalComments.toLocaleString("ko-KR") : "-";
-      const statsHtml = `
-        <div class="summary-stats">
-          <span>📝 게시글 <strong>${data.postCount || 0}</strong>건</span>
-          <span>👁 총 조회 <strong>${totalViews}</strong>회</span>
-          <span>💬 총 댓글 <strong>${totalComments}</strong>개</span>
-        </div>`;
-      const bodyHtml = hasContent
-        ? SUMMARY_SECTIONS.map((label) => {
-            const content = sections[label];
-            if (!content) return "";
-            return `<div class="summary-row">
-              <span class="summary-section-label">${escapeHtml(label)}</span>
-              <p class="summary-section-body">${escapeHtml(content)}</p>
-            </div>`;
-          }).join("")
-        : (data.postCount || 0) === 0
-          ? `<p class="summary-empty-msg">수집된 게시글이 없습니다.</p>`
-          : data.error
-            ? `<p class="summary-error">⚠ AI 요약 실패 — 다음 실행 시 재시도됩니다.<br><small>${escapeHtml(data.error.slice(0, 120))}</small></p>`
-            : data.summary
-              ? `<p class="summary-section-body" style="white-space:pre-wrap">${escapeHtml(data.summary)}</p>`
-              : `<p class="summary-error">⚠ AI 요약을 생성하지 못했습니다. 다음 실행 시 재시도됩니다.</p>`;
-      return `
-        <div class="summary-card" style="border-left-color:${color}">
-          <div class="summary-card-head">
-            <span class="game-chip" data-game="${escapeHtml(game)}">${escapeHtml(game)}</span>
-          </div>
-          ${statsHtml}
-          <div class="summary-body">${bodyHtml}</div>
-        </div>`;
-    }).join("")}
-  `;
-}
-
-document.querySelectorAll(".main-tab").forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.view = btn.dataset.view;
-    viewFeed.hidden    = state.view !== "feed";
-    viewSummary.hidden = state.view !== "summary";
-    viewReviews.hidden = state.view !== "reviews";
-    if (state.view === "summary") {
-      renderTrendCharts();
-      if (!state.summary) {
-        summaryContent.innerHTML = `<div class="summary-empty">요약 불러오는 중...</div>`;
-        state.summary = await fetchJson("summary.json").catch(() => null);
-      }
-      renderSummary();
-    }
-    if (state.view === "reviews") {
-      if (!state.reviews) {
-        document.querySelector("#reviewFeed").innerHTML = `<div class="review-empty">리뷰 불러오는 중...</div>`;
-        document.querySelector("#reviewSummaryContent").innerHTML = `<div class="review-summary-empty">불러오는 중...</div>`;
-        [state.reviews, state.reviewSummary, state.patches] = await Promise.all([
-          fetchJson("reviews.json").catch(() => null),
-          fetchJson("review-summary.json").catch(() => null),
-          fetchJson("patches.json").catch(() => null)
-        ]);
-      }
-      renderReviewSummary();
-      renderReviews();
-    }
-  });
-});
-
-document.querySelectorAll(".summary-tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".summary-tab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.summaryPeriod = btn.dataset.period;
-    renderTrendCharts();
-    renderSummary();
-  });
-});
 
 load();
 state.timer = window.setInterval(() => load(true), 60_000);
