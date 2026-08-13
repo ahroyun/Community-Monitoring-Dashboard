@@ -910,10 +910,18 @@ function renderTrendCharts() {
     const bw = (VB_W - gap * (n - 1)) / n;
     const TOTAL_H = VB_H + AXIS_H;
 
+    const isCompact = n > 12; // 일간(24개): 겹침 방지를 위해 숫자 표시 최소화
     const rects = values.map((v, i) => {
       const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * VB_H));
       const x = (i * (bw + gap)).toFixed(2);
-      return `<rect x="${x}" y="${VB_H - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${color}" rx="1" opacity="${v > 0 ? 0.85 : 0.1}"/>`;
+      const cx = (i * (bw + gap) + bw / 2).toFixed(1);
+      const rect = `<rect x="${x}" y="${VB_H - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${color}" rx="1" opacity="${v > 0 ? 0.85 : 0.1}"/>`;
+      // 숫자: 주간은 항상, 일간은 값 있는 막대만 (단 인접 막대가 모두 값 있으면 겹치므로 피크만)
+      const showNum = v > 0 && (!isCompact || v === max);
+      const num = showNum
+        ? `<text x="${cx}" y="${VB_H - bh - 2}" text-anchor="middle" font-size="${isCompact ? 6 : 7}" fill="${color}" opacity="0.9" font-weight="600">${v}</text>`
+        : "";
+      return rect + num;
     }).join("");
 
     // 구분선
