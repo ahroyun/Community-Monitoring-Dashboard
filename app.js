@@ -748,7 +748,7 @@ function renderReviews() {
     const color = GAME_COLORS[g];
     const dot = color ? `<span class="filter-dot" style="background:${color}"></span>` : "";
     const cnt = g === ALL ? allReviews.length : allReviews.filter((r) => r.game === g).length;
-    return `<button class="filter ${state.reviewGame === g ? "active" : ""}" type="button" data-game="${escapeHtml(g)}">
+    return `<button class="review-game-btn ${state.reviewGame === g ? "active" : ""}" type="button" data-game="${escapeHtml(g)}">
       <span>${dot}${escapeHtml(g)}</span><small>${cnt}</small>
     </button>`;
   }).join("");
