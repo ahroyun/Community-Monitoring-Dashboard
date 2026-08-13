@@ -62,7 +62,9 @@ async function callGemini(prompt) {
         continue;
       }
       const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      // thinking 파트(thought: true) 제외하고 실제 응답 텍스트만 합산
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const text = parts.filter(p => !p.thought).map(p => p.text || "").join("").trim();
       if (!text) { lastErr = new Error(`Empty response (${model})`); continue; }
       console.log(`  → 모델 사용: ${model}`);
       return text;
