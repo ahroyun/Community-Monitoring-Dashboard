@@ -703,24 +703,6 @@ button:hover {
   margin-bottom: 6px;
 }
 
-.trend-axis {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: var(--muted);
-  width: 100%;
-  margin-top: 4px;
-}
-
-.trend-axis-7 span {
-  text-align: center;
-  line-height: 1.3;
-  flex: 1;
-}
-
-.trend-axis-24 {
-  width: 264px;
-}
 
 /* ── Summary ─────────────────────────────────────── */
 .summary-section {
