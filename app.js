@@ -986,8 +986,8 @@ function renderTrendCharts() {
           <div class="trend-game-label">
             <span class="trend-dot" style="background:${color}"></span>
             <strong>${game}</strong>
+            <span class="trend-stat-small">${statText}</span>
           </div>
-          <div class="trend-stat-small">${statText}</div>
           ${barSvg(counts, color, tickIndices, tickLabels)}
         </div>`;
       }).join("")}
