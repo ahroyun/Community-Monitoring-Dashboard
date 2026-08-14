@@ -701,7 +701,8 @@ button:hover {
 .trend-stat-small {
   font-size: 11px;
   color: var(--muted);
-  margin-bottom: 6px;
+  margin-left: 4px;
+  white-space: nowrap;
 }
 
 
