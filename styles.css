@@ -674,19 +674,12 @@ button:hover {
 
 .trend-games-row {
   display: flex;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
+  gap: 64px;
 }
 
 .trend-game-col {
   flex: 1;
   min-width: 0;
-  padding: 10px 14px 8px;
-}
-
-.trend-game-col:not(:first-child) {
-  border-left: 1px solid var(--line);
 }
 
 .trend-game-label {
