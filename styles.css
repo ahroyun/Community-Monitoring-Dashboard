@@ -674,21 +674,27 @@ button:hover {
 
 .trend-games-row {
   display: flex;
-  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .trend-game-col {
   flex: 1;
   min-width: 0;
+  padding: 10px 14px 8px;
+}
+
+.trend-game-col:not(:first-child) {
+  border-left: 1px solid var(--line);
 }
 
 .trend-game-label {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
   margin-bottom: 4px;
   font-size: 12px;
-  min-height: 2.2em;
 }
 
 .trend-dot {
@@ -701,8 +707,7 @@ button:hover {
 .trend-stat-small {
   font-size: 11px;
   color: var(--muted);
-  margin-left: 4px;
-  white-space: nowrap;
+  margin-bottom: 6px;
 }
 
 
@@ -953,33 +958,9 @@ button:hover {
     width: 100%;
   }
 
+  .insight-strip,
   .workspace {
     grid-template-columns: 1fr;
-  }
-
-  /* 인사이트 카드: 4열 유지, 내부 압축 */
-  .insight-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .insight-strip article {
-    min-height: unset;
-    padding: 10px 8px;
-  }
-
-  .insight-strip span {
-    font-size: 10px;
-    margin-bottom: 4px;
-  }
-
-  .insight-strip strong {
-    font-size: 20px;
-    margin-bottom: 4px;
-  }
-
-  .insight-strip p {
-    font-size: 10px;
   }
 }
 
@@ -989,23 +970,11 @@ button:hover {
   }
 
   .insight-strip {
-    gap: 4px;
-  }
-
-  .insight-strip article {
-    padding: 8px 6px;
-  }
-
-  .insight-strip span {
-    font-size: 9px;
+    gap: 8px;
   }
 
   .insight-strip strong {
-    font-size: 17px;
-  }
-
-  .insight-strip p {
-    display: none;
+    font-size: 23px;
   }
 
   .post-top {
@@ -1209,22 +1178,7 @@ button:hover {
     padding: 16px;
     order: 2;
   }
-  .review-feed-panel {
-    order: 1;
-    padding: 14px 16px;
-  }
-
-  /* 스토어·감성 필터 */
-  .review-store-btn,
-  .review-sent-btn {
-    padding: 4px 10px;
-    font-size: 12px;
-  }
-
-  /* 리뷰 카드 */
-  .review-card {
-    padding: 10px 12px;
-  }
+  .review-feed-panel { order: 1; }
 }
 
 .review-section {
@@ -1261,34 +1215,6 @@ button:hover {
   flex-wrap: wrap;
   gap: 8px;
 }
-
-.review-game-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--ink);
-  transition: all 0.15s;
-}
-.review-game-btn small {
-  color: var(--muted);
-  font-size: 11px;
-}
-.review-game-btn.active {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-  font-weight: 700;
-}
-.review-game-btn.active small { color: rgba(255,255,255,0.7); }
-.review-game-btn[data-game="대항해시대 오리진"].active { background: #0369a1; border-color: #0369a1; }
-.review-game-btn[data-game="언디셈버"].active          { background: #c2410c; border-color: #c2410c; }
-.review-game-btn[data-game="창세기전 모바일"].active   { background: #7c3aed; border-color: #7c3aed; }
 
 .review-sent-filter {
   display: flex;
