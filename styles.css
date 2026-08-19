@@ -1313,7 +1313,44 @@ button:hover {
 .patch-no-marker {
   font-size: 12px;
   color: var(--muted);
-  margin: 6px 0 0;
+  margin: 8px 0 0;
+}
+
+/* 패치별 요약 */
+.patch-summary-row {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: auto auto;
+  gap: 1px 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--line);
+}
+
+.patch-summary-label {
+  grid-row: 1 / 3;
+  font-size: 11px;
+  font-weight: 700;
+  padding-top: 2px;
+}
+
+.patch-summary-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.patch-summary-body {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.patch-summary-muted {
+  font-style: italic;
 }
 
 /* 키워드 태그 */
