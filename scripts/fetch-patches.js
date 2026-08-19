@@ -25,7 +25,7 @@ const PATCH_SOURCES = [
 ];
 
 // 패치/업데이트 게시글 식별 키워드
-const PATCH_KEYWORDS = ["업데이트", "패치", "점검", "버전", "v.", "V.", "출시", "오픈", "개선", "수정"];
+const PATCH_KEYWORDS = ["점검", "패치", "업데이트"];
 
 function decodeEntities(value = "") {
   return value
