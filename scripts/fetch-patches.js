@@ -91,6 +91,7 @@ async function fetchFloorPatches(source) {
       if (!title || title.length < 2) continue;
       if (!PATCH_KEYWORDS.some((k) => title.includes(k))) continue;
       const rawDate = cleanText(body.match(/<p[^>]*class="[^"]*ago[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] || "");
+      if (!rawDate) continue; // 날짜 없는 항목 = 상단 고정 공지 → 스킵
       const date = resolveDate(rawDate, now);
       if (seen.has(href)) continue;
       seen.add(href);
