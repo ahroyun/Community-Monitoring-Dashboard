@@ -1191,7 +1191,7 @@ function renderPatchTab() {
 
   // SVG: 고정 높이 바 차트 + 패치 마커 (축 아래 점선)
   function buildWeekSvg(dayKeys, counts, markers, color) {
-    const W = 280, VH = 58, AH = 16;
+    const W = 340, VH = 78, AH = 18;
     const n = dayKeys.length, gap = 4;
     const bw = (W - gap * (n - 1)) / n;
     const max = Math.max(...counts, 1);
@@ -1207,10 +1207,10 @@ function renderPatchTab() {
       const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="2" opacity="${op}"/>`;
       let num = "";
       if (v > 0) {
-        if (isMarked && bh > 14) {
-          num = `<text x="${cx}" y="${VH - 4}" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="700">${v}</text>`;
+        if (isMarked && bh > 16) {
+          num = `<text x="${cx}" y="${VH - 5}" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">${v}</text>`;
         } else if (!isMarked) {
-          num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
+          num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8.5" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
         }
       }
       return r + num;
@@ -1222,7 +1222,7 @@ function renderPatchTab() {
       const [, mm, dd] = key.split("-");
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isToday = key === todayKst;
-      return `<text x="${cx}" y="${VH + AH - 2}" text-anchor="middle" font-size="8.5" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
+      return `<text x="${cx}" y="${VH + AH - 2}" text-anchor="middle" font-size="9" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
     }).join("");
 
     const markerLines = markers.map((m) => {
@@ -1230,13 +1230,17 @@ function renderPatchTab() {
       return `<line x1="${cx}" y1="0" x2="${cx}" y2="${VH}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.3"/>`;
     }).join("");
 
+    // P-label: 짝수/홀수 마커 y 위치 엇갈려 겹침 방지
+    const P_BASE = VH + AH + 9;
     const pLabels = markers.map((m, mi) => {
       const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
-      return `<text x="${cx}" y="${VH + AH + 9}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">P${mi + 1}</text>`;
+      const y = P_BASE + (mi % 2 === 0 ? 0 : 11);
+      return `<text x="${cx}" y="${y}" text-anchor="middle" font-size="8.5" fill="${color}" font-weight="700">P${mi + 1}</text>`;
     }).join("");
 
-    const TOTAL_H = VH + AH + (markers.length ? 12 : 0);
-    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="92" style="display:block">
+    const pExtra = markers.length > 1 ? 22 : (markers.length === 1 ? 12 : 0);
+    const TOTAL_H = VH + AH + pExtra;
+    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="120" style="display:block">
       ${axisLine}${markerLines}${bars}${dateLabels}${pLabels}
     </svg>`;
   }
