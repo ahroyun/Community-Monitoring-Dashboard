@@ -173,10 +173,11 @@ for (const source of PATCH_SOURCES) {
   newPatches.push(...fresh);
 }
 
-// 1년치 유지, 날짜 내림차순
+// 1년치 유지, 30일 이후 미래 날짜 제외, 날짜 내림차순
 const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+const futureCutoff = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const merged = [...existing, ...newPatches]
-  .filter((p) => !p.date || p.date >= cutoff)
+  .filter((p) => !p.date || (p.date >= cutoff && p.date <= futureCutoff))
   .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
 // 중복 ID 제거
