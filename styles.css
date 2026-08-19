@@ -1240,7 +1240,7 @@ button:hover {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px 16px 12px;
 }
 
 .patch-game-card.patch-game-card-alert {
@@ -1316,12 +1316,13 @@ button:hover {
   margin: 8px 0 0;
 }
 
-/* 패치별 요약 */
+/* 패치별 반응 요약 */
 .patch-summary-row {
   display: grid;
-  grid-template-columns: 24px 1fr;
+  grid-template-columns: 22px 1fr;
   grid-template-rows: auto auto;
-  gap: 1px 8px;
+  column-gap: 6px;
+  row-gap: 2px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 0.5px solid var(--line);
@@ -1329,28 +1330,30 @@ button:hover {
 
 .patch-summary-label {
   grid-row: 1 / 3;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding-top: 2px;
+  padding-top: 3px;
+  line-height: 1;
 }
 
 .patch-summary-title {
   font-size: 12px;
   font-weight: 500;
   color: var(--ink);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .patch-summary-body {
   font-size: 12px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .patch-summary-muted {
   font-style: italic;
+  opacity: 0.7;
 }
 
 /* 키워드 태그 */
