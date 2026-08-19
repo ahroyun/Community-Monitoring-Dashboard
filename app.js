@@ -1098,152 +1098,180 @@ function renderPatchTab() {
   const el = document.querySelector("#patchPanel");
   if (!el) return;
 
-  const patches = state.patches?.patches || [];
-  if (!patches.length) {
-    el.innerHTML = `<div class="patch-empty">패치 데이터가 없습니다.<br>GitHub Actions에서 update-reviews.yml 워크플로우를 실행하면 자동 수집됩니다.</div>`;
-    return;
-  }
-
   const ISSUE_KWS = ["버그", "오류", "에러", "먹통", "튕김", "튕", "접속", "환불", "문제", "불가", "안됨", "안돼", "오작동", "이슈", "먹힘"];
   const POS_KWS   = ["감사", "좋아", "최고", "기대", "개선", "추가", "이벤트", "혜택", "만족"];
+  const allPatchData = state.patches?.patches || [];
   const posts = allPosts();
   const GAME_LIST = Object.keys(GAME_COLORS);
 
-  // 최근 7일 날짜 키 (KST) — 오늘 포함
   function toKstDate(d) {
     return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10);
   }
   const todayKst = toKstDate(new Date());
-  const week7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.now() + 9 * 3600000 - (6 - i) * 86400000);
-    return d.toISOString().slice(0, 10); // UTC date, but offset so it matches KST
-  });
 
-  // 각 날짜별 게시물 수 계산
-  function countByDay(gamePosts) {
-    return week7.map((key) =>
+  // 날짜 문자열에서 D+offset 키 반환
+  function addDays(dateStr, offset) {
+    const d = new Date(dateStr + "T00:00:00+09:00");
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // 게시물 날짜별 카운트
+  function countByKeys(gamePosts, keys) {
+    return keys.map((key) =>
       gamePosts.filter((p) => { const d = parsePostDate(p); return d && toKstDate(d) === key; }).length
     );
   }
 
-  // 최근 7일 안에 있는 패치만 마커로 표시
-  function patchesInWindow(gamePatches) {
-    return gamePatches.filter((p) => p.date >= week7[0] && p.date <= week7[6]);
-  }
-
-  // 이슈/긍정 키워드 카운트 (패치 당일~D+2)
-  function kwCountsNear(gamePosts, patchDate, kwList) {
-    const pd = new Date(patchDate + "T00:00:00+09:00");
-    const windowPosts = gamePosts.filter((p) => {
+  // 키워드 카운트 (날짜 범위 내)
+  function kwCounts(gamePosts, fromDate, toDate, kwList) {
+    const window = gamePosts.filter((p) => {
       const d = parsePostDate(p);
       if (!d) return false;
-      const diff = (d.getTime() - pd.getTime()) / 86400000;
-      return diff >= 0 && diff <= 2;
+      const k = toKstDate(d);
+      return k >= fromDate && k <= toDate;
     });
     const found = {};
     for (const kw of kwList) {
-      const cnt = windowPosts.filter((p) => (p.title || "").includes(kw)).length;
+      const cnt = window.filter((p) => (p.title || "").includes(kw)).length;
       if (cnt > 0) found[kw] = cnt;
     }
     return found;
   }
 
+  // 패치 반응 텍스트 요약 생성
+  function patchSummaryText(gamePosts, patch, dayKeys) {
+    const pidx = dayKeys.indexOf(patch.date);
+    if (pidx < 0) return null;
+    const before = dayKeys.slice(0, pidx).filter(Boolean);
+    const after  = dayKeys.slice(pidx + 1).filter(Boolean);
+    const patchDayCount = countByKeys(gamePosts, [patch.date])[0];
+    const beforeAvg = before.length
+      ? (countByKeys(gamePosts, before).reduce((a, b) => a + b, 0) / before.length)
+      : 0;
+    const afterAvg = after.length
+      ? (countByKeys(gamePosts, after).reduce((a, b) => a + b, 0) / after.length)
+      : 0;
+
+    const issueKw = kwCounts(gamePosts, patch.date, addDays(patch.date, 2), ISSUE_KWS);
+    const posKw   = kwCounts(gamePosts, patch.date, addDays(patch.date, 2), POS_KWS);
+    const issueTop = Object.entries(issueKw).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
+    const posTop   = Object.entries(posKw).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
+
+    const parts = [];
+    if (beforeAvg > 0 && afterAvg > 0) {
+      const pct = Math.round(((afterAvg - beforeAvg) / beforeAvg) * 100);
+      const dir = pct > 10 ? `패치 이후 게시물 ${pct > 0 ? "+" : ""}${pct}% 증가` : pct < -10 ? `패치 이후 게시물 ${pct}% 감소` : "패치 전후 게시물량 비슷한 수준";
+      parts.push(dir);
+    } else if (patchDayCount > 0) {
+      parts.push(`패치 당일 ${patchDayCount}건 게시물`);
+    }
+    if (issueTop.length) parts.push(`이슈 키워드: ${issueTop.join(", ")}`);
+    if (posTop.length)   parts.push(`긍정 반응: ${posTop.join(", ")}`);
+    if (!parts.length) return null;
+    return parts.join(" · ");
+  }
+
   // SVG: 7-day bar chart with patch markers
-  function buildWeekSvg(counts, markers, color) {
-    const W = 300, VH = 52, AH = 16, MARKER_H = 10;
-    const n = 7, gap = 4;
+  function buildWeekSvg(dayKeys, counts, markers, color) {
+    const W = 400, VH = 70, AH = 18, MARKER_H = 14;
+    const n = dayKeys.length, gap = 5;
     const bw = (W - gap * (n - 1)) / n;
     const max = Math.max(...counts, 1);
 
     const bars = counts.map((v, i) => {
-      const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * VH));
-      const x = (i * (bw + gap)).toFixed(2);
+      const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VH));
+      const x  = (i * (bw + gap)).toFixed(2);
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isMarked = markers.some((m) => m.dayIdx === i);
       const fill = isMarked ? color : "#9ca3af";
-      const op   = isMarked ? "0.85" : "0.35";
-      const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="1.5" opacity="${op}"/>`;
+      const op   = isMarked ? "0.85" : "0.3";
+      const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="2" opacity="${op}"/>`;
       const num = v > 0
-        ? `<text x="${cx}" y="${VH - bh - 2}" text-anchor="middle" font-size="7" fill="${fill}" opacity="${op}" font-weight="600">${v}</text>`
+        ? `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8" fill="${fill}" opacity="${op}" font-weight="600">${v}</text>`
         : "";
       return r + num;
     }).join("");
 
-    // 날짜 레이블 (월/일)
-    const dateLabels = week7.map((key, i) => {
+    const dateLabels = dayKeys.map((key, i) => {
       const [, mm, dd] = key.split("-");
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isToday = key === todayKst;
-      const fill = isToday ? color : "#9ca3af";
-      const fw   = isToday ? "600" : "400";
-      return `<text x="${cx}" y="${VH + 11}" text-anchor="middle" font-size="7.5" fill="${fill}" font-weight="${fw}">${Number(mm)}/${Number(dd)}</text>`;
+      return `<text x="${cx}" y="${VH + 13}" text-anchor="middle" font-size="8.5" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
     }).join("");
 
-    // 패치 마커 삼각형 + 레이블
     const markerSvg = markers.map((m, mi) => {
       const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
-      // 삼각형 (아래를 가리킴) at top
-      const tri = `<polygon points="${cx},${-MARKER_H} ${Number(cx)-4},${-2} ${Number(cx)+4},${-2}" fill="${color}" opacity="0.7"/>`;
-      // 패치 번호 레이블
-      const lbl = `<text x="${cx}" y="${-MARKER_H - 2}" text-anchor="middle" font-size="7" fill="${color}" font-weight="700">P${mi + 1}</text>`;
+      const tri = `<polygon points="${cx},0 ${Number(cx) - 5},${MARKER_H} ${Number(cx) + 5},${MARKER_H}" fill="${color}" opacity="0.75"/>`;
+      const lbl = `<text x="${cx}" y="${-3}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">P${mi + 1}</text>`;
       return tri + lbl;
     }).join("");
 
     const axisLine = `<line x1="0" y1="${VH}" x2="${W}" y2="${VH}" stroke="#e5e7eb" stroke-width="0.5"/>`;
-    const TOTAL_H = VH + AH + MARKER_H + 10;
-    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" style="display:block;overflow:visible;max-height:100px">
-      <g transform="translate(0,${MARKER_H + 10})">${axisLine}${bars}${dateLabels}${markerSvg}</g>
+    const TOTAL_H = VH + AH + MARKER_H + 14;
+    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" style="display:block;overflow:visible">
+      <g transform="translate(0,${MARKER_H + 14})">${axisLine}${bars}${dateLabels}${markerSvg}</g>
     </svg>`;
   }
 
   const gameHtmlParts = GAME_LIST.map((game) => {
     const color = GAME_COLORS[game];
     const gamePosts = posts.filter((p) => p.game === game);
-    const gamePatches = patches.filter((p) => p.game === game).sort((a, b) => b.date.localeCompare(a.date));
-    if (!gamePatches.length) return "";
+    const gamePatches = allPatchData.filter((p) => p.game === game).sort((a, b) => b.date.localeCompare(a.date));
 
-    const counts  = countByDay(gamePosts);
-    const inWindow = patchesInWindow(gamePatches);
+    // 날짜 윈도우: 가장 최근 패치 D-3 ~ D+3, 패치 없으면 최근 7일
+    let dayKeys;
+    if (gamePatches.length) {
+      const anchor = gamePatches[0].date;
+      dayKeys = Array.from({ length: 7 }, (_, i) => addDays(anchor, i - 3));
+    } else {
+      dayKeys = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(Date.now() + 9 * 3600000 - (6 - i) * 86400000);
+        return d.toISOString().slice(0, 10);
+      });
+    }
 
-    // dayIdx: 0=6일전, 6=오늘
-    const markers = inWindow.map((patch) => ({
-      patch,
-      dayIdx: week7.indexOf(patch.date)
-    })).filter((m) => m.dayIdx >= 0);
+    const counts = countByKeys(gamePosts, dayKeys);
+    const windowTotal = counts.reduce((a, b) => a + b, 0);
 
-    // 인사이트: 가장 최근 패치 기준 이슈/긍정 키워드
-    const latestPatch = gamePatches[0];
-    const issueKws = kwCountsNear(gamePosts, latestPatch.date, ISSUE_KWS);
-    const posKws   = kwCountsNear(gamePosts, latestPatch.date, POS_KWS);
+    // 윈도우 내 패치 마커
+    const markers = gamePatches
+      .map((patch) => ({ patch, dayIdx: dayKeys.indexOf(patch.date) }))
+      .filter((m) => m.dayIdx >= 0);
 
-    // 주간 총계 + 전주 비교 (전주 = 7일 전~14일 전)
-    const weekTotal = counts.reduce((a, b) => a + b, 0);
-    const prevCutoff = new Date(Date.now() + 9 * 3600000 - 14 * 86400000).toISOString().slice(0, 10);
-    const prevEnd    = new Date(Date.now() + 9 * 3600000 - 7 * 86400000).toISOString().slice(0, 10);
-    const prevTotal  = gamePosts.filter((p) => {
-      const d = parsePostDate(p);
-      if (!d) return false;
-      const k = toKstDate(d);
-      return k >= prevCutoff && k <= prevEnd;
-    }).length;
-    const pct = prevTotal > 0 ? Math.round(((weekTotal - prevTotal) / prevTotal) * 100) : null;
+    // 전주 동일 기간 비교
+    const prevKeys = dayKeys.map((k) => addDays(k, -7));
+    const prevTotal = countByKeys(gamePosts, prevKeys).reduce((a, b) => a + b, 0);
+    const pct = prevTotal > 0 ? Math.round(((windowTotal - prevTotal) / prevTotal) * 100) : null;
     const pctTxt = pct !== null
       ? `<span class="patch-ins-item ${pct > 10 ? "patch-ins-up" : pct < -10 ? "patch-ins-down" : "patch-ins-flat"}">${pct > 0 ? "+" : ""}${pct}% vs 전주</span>`
       : "";
 
-    const issueTxt = Object.entries(issueKws).sort((a, b) => b[1] - a[1]).slice(0, 4)
-      .map(([kw, n]) => `<span class="patch-kw patch-kw-hot">${escapeHtml(kw)} ${n}</span>`).join("");
-    const posTxt = Object.entries(posKws).sort((a, b) => b[1] - a[1]).slice(0, 3)
-      .map(([kw, n]) => `<span class="patch-kw patch-kw-pos">${escapeHtml(kw)} ${n}</span>`).join("");
+    // 전체 이슈 키워드 (윈도우 전체)
+    const issueAll = kwCounts(gamePosts, dayKeys[0], dayKeys[6], ISSUE_KWS);
+    const isAlert  = Object.keys(issueAll).length > 0;
 
-    // 패치 범례 (P1, P2…)
-    const patchLegend = markers.length
-      ? `<div class="patch-marker-legend">${markers.map((m, i) =>
-          `<span class="patch-marker-item" style="color:${color}">P${i + 1}</span><span class="patch-marker-label">${escapeHtml(m.patch.title)}</span>`
-        ).join("")}</div>`
-      : `<p class="patch-no-marker">이번 주 패치 없음</p>`;
+    // 패치별 텍스트 요약
+    const patchSummaries = markers.map((m, mi) => {
+      const txt = patchSummaryText(gamePosts, m.patch, dayKeys);
+      return txt
+        ? `<div class="patch-summary-row">
+            <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
+            <span class="patch-summary-title">${escapeHtml(m.patch.title)}</span>
+            <span class="patch-summary-body">${escapeHtml(txt)}</span>
+           </div>`
+        : `<div class="patch-summary-row">
+            <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
+            <span class="patch-summary-title">${escapeHtml(m.patch.title)}</span>
+            <span class="patch-summary-body patch-summary-muted">게시물 데이터 부족 (수집 후 확인 가능)</span>
+           </div>`;
+    }).join("");
 
-    const isAlert = Object.keys(issueKws).length > 0;
+    const noPatchNote = !gamePatches.length
+      ? `<p class="patch-no-marker">공지 데이터 없음 — GitHub Actions 실행 후 자동 수집</p>`
+      : markers.length === 0
+      ? `<p class="patch-no-marker">윈도우 내 패치 없음 (최근 패치: ${gamePatches[0].date})</p>`
+      : "";
 
     return `
       <div class="patch-game-card${isAlert ? " patch-game-card-alert" : ""}">
@@ -1251,22 +1279,19 @@ function renderPatchTab() {
           <div style="display:flex;align-items:center;gap:8px">
             <span class="patch-game-dot" style="background:${color}"></span>
             <strong class="patch-game-name">${escapeHtml(game)}</strong>
-            <span class="patch-week-total">${weekTotal}건 / 7일</span>
+            <span class="patch-week-total">${windowTotal}건 / ${dayKeys[0].slice(5)} ~ ${dayKeys[6].slice(5)}</span>
           </div>
-          <div style="display:flex;gap:6px;align-items:center">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
             ${pctTxt}
             ${isAlert ? `<span class="patch-badge patch-badge-alert">이슈 키워드</span>` : `<span class="patch-badge patch-badge-normal">정상</span>`}
           </div>
         </div>
-        ${buildWeekSvg(counts, markers, color)}
-        ${patchLegend}
-        ${issueTxt || posTxt ? `<div class="patch-kws" style="margin-top:6px">${issueTxt}${posTxt}</div>` : ""}
+        ${buildWeekSvg(dayKeys, counts, markers, color)}
+        ${patchSummaries || noPatchNote}
       </div>`;
-  }).filter(Boolean);
+  });
 
-  el.innerHTML = gameHtmlParts.length
-    ? gameHtmlParts.join("")
-    : `<div class="patch-empty">최근 7일 이내 데이터가 없습니다.</div>`;
+  el.innerHTML = gameHtmlParts.join("");
 }
 
 document.querySelectorAll(".main-tab").forEach((btn) => {
