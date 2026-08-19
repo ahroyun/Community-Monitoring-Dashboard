@@ -1139,57 +1139,83 @@ function renderPatchTab() {
     return found;
   }
 
-  // 패치 반응 텍스트 요약 생성
-  function patchSummaryText(gamePosts, patch, dayKeys) {
+  // 패치 유저 반응 요약 (자연어)
+  function patchReactionText(gamePosts, patch, dayKeys) {
     const pidx = dayKeys.indexOf(patch.date);
     if (pidx < 0) return null;
-    const before = dayKeys.slice(0, pidx).filter(Boolean);
-    const after  = dayKeys.slice(pidx + 1).filter(Boolean);
-    const patchDayCount = countByKeys(gamePosts, [patch.date])[0];
-    const beforeAvg = before.length
-      ? (countByKeys(gamePosts, before).reduce((a, b) => a + b, 0) / before.length)
-      : 0;
-    const afterAvg = after.length
-      ? (countByKeys(gamePosts, after).reduce((a, b) => a + b, 0) / after.length)
-      : 0;
 
-    const issueKw = kwCounts(gamePosts, patch.date, addDays(patch.date, 2), ISSUE_KWS);
-    const posKw   = kwCounts(gamePosts, patch.date, addDays(patch.date, 2), POS_KWS);
+    const beforeKeys = dayKeys.slice(0, pidx);
+    const afterKeys  = dayKeys.slice(pidx + 1);
+    const patchCount = countByKeys(gamePosts, [patch.date])[0];
+    const beforeAvg  = beforeKeys.length ? countByKeys(gamePosts, beforeKeys).reduce((a, b) => a + b, 0) / beforeKeys.length : 0;
+    const afterCounts = countByKeys(gamePosts, afterKeys);
+    const afterAvg   = afterKeys.length ? afterCounts.reduce((a, b) => a + b, 0) / afterKeys.length : 0;
+
+    // 패치 이후 D+1~D+2 게시물만 보고 이슈/긍정 판단
+    const afterFrom = addDays(patch.date, 1);
+    const afterTo   = addDays(patch.date, 2);
+    const issueKw = kwCounts(gamePosts, afterFrom, afterTo, ISSUE_KWS);
+    const posKw   = kwCounts(gamePosts, afterFrom, afterTo, POS_KWS);
     const issueTop = Object.entries(issueKw).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
     const posTop   = Object.entries(posKw).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
 
-    const parts = [];
-    if (beforeAvg > 0 && afterAvg > 0) {
+    const sentences = [];
+
+    // 볼륨 변화 해석
+    if (patchCount > 0 && beforeAvg > 0) {
       const pct = Math.round(((afterAvg - beforeAvg) / beforeAvg) * 100);
-      const dir = pct > 10 ? `패치 이후 게시물 ${pct > 0 ? "+" : ""}${pct}% 증가` : pct < -10 ? `패치 이후 게시물 ${pct}% 감소` : "패치 전후 게시물량 비슷한 수준";
-      parts.push(dir);
-    } else if (patchDayCount > 0) {
-      parts.push(`패치 당일 ${patchDayCount}건 게시물`);
+      if (pct > 30) sentences.push(`패치 이후 커뮤니티 반응이 평소 대비 활발하게 증가했습니다.`);
+      else if (pct < -30) sentences.push(`패치 이후 유저 게시물이 눈에 띄게 줄었습니다.`);
+      else sentences.push(`패치 전후 유저 게시물량은 비슷한 수준을 유지했습니다.`);
+    } else if (patchCount === 0 && afterAvg === 0) {
+      return null; // 데이터 없음
     }
-    if (issueTop.length) parts.push(`이슈 키워드: ${issueTop.join(", ")}`);
-    if (posTop.length)   parts.push(`긍정 반응: ${posTop.join(", ")}`);
-    if (!parts.length) return null;
-    return parts.join(" · ");
+
+    // 이슈 해석
+    if (issueTop.length >= 2) {
+      sentences.push(`패치 직후 '${issueTop[0]}', '${issueTop[1]}' 등 불만/이슈성 게시물이 확인됩니다.`);
+    } else if (issueTop.length === 1) {
+      sentences.push(`'${issueTop[0]}' 관련 이슈 언급이 일부 있었습니다.`);
+    }
+
+    // 긍정 해석
+    if (posTop.length >= 1 && !issueTop.length) {
+      sentences.push(`'${posTop.join("', '")}' 등 긍정적 키워드 게시물이 주를 이뤘습니다.`);
+    } else if (posTop.length >= 1) {
+      sentences.push(`'${posTop.join("', '")}' 관련 긍정 반응도 함께 나타났습니다.`);
+    }
+
+    if (!sentences.length) return null;
+    return sentences.join(" ");
   }
 
-  // SVG: 7-day bar chart with patch markers
+  // SVG: 컴팩트 바 차트 + 패치 마커
   function buildWeekSvg(dayKeys, counts, markers, color) {
-    const W = 400, VH = 70, AH = 18, MARKER_H = 14;
-    const n = dayKeys.length, gap = 5;
+    const W = 300, VH = 48, AH = 14, MARKER_H = 12;
+    const n = dayKeys.length, gap = 4;
     const bw = (W - gap * (n - 1)) / n;
     const max = Math.max(...counts, 1);
+
+    // 마커가 있는 막대는 숫자를 바 안에 표시 (겹침 방지)
+    const markedIdxs = new Set(markers.map((m) => m.dayIdx));
 
     const bars = counts.map((v, i) => {
       const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VH));
       const x  = (i * (bw + gap)).toFixed(2);
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
-      const isMarked = markers.some((m) => m.dayIdx === i);
+      const isMarked = markedIdxs.has(i);
       const fill = isMarked ? color : "#9ca3af";
-      const op   = isMarked ? "0.85" : "0.3";
-      const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="2" opacity="${op}"/>`;
-      const num = v > 0
-        ? `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8" fill="${fill}" opacity="${op}" font-weight="600">${v}</text>`
-        : "";
+      const op   = isMarked ? "0.85" : "0.28";
+      const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="1.5" opacity="${op}"/>`;
+      // 마커가 있는 막대는 숫자를 막대 안(하단)에 흰색으로 — 겹침 없음
+      let num = "";
+      if (v > 0) {
+        if (isMarked && bh > 14) {
+          num = `<text x="${cx}" y="${VH - 4}" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="700">${v}</text>`;
+        } else if (!isMarked) {
+          num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="7" fill="${fill}" opacity="${op}" font-weight="600">${v}</text>`;
+        }
+      }
       return r + num;
     }).join("");
 
@@ -1197,20 +1223,25 @@ function renderPatchTab() {
       const [, mm, dd] = key.split("-");
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isToday = key === todayKst;
-      return `<text x="${cx}" y="${VH + 13}" text-anchor="middle" font-size="8.5" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
+      return `<text x="${cx}" y="${VH + 11}" text-anchor="middle" font-size="7.5" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
     }).join("");
 
+    // 마커: 막대 위 세로선 + P번호 (겹치면 좌우로 오프셋)
     const markerSvg = markers.map((m, mi) => {
-      const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
-      const tri = `<polygon points="${cx},0 ${Number(cx) - 5},${MARKER_H} ${Number(cx) + 5},${MARKER_H}" fill="${color}" opacity="0.75"/>`;
-      const lbl = `<text x="${cx}" y="${-3}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">P${mi + 1}</text>`;
-      return tri + lbl;
+      const baseCx = m.dayIdx * (bw + gap) + bw / 2;
+      const cx = baseCx.toFixed(1);
+      // 세로 점선
+      const line = `<line x1="${cx}" y1="${-MARKER_H}" x2="${cx}" y2="0" stroke="${color}" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.6"/>`;
+      // P번호 — 짝수/홀수로 좌우 배치해서 겹침 방지
+      const lx = markers.length > 1 && mi % 2 === 1 ? (baseCx + 10).toFixed(1) : (baseCx - (markers.length > 1 ? 10 : 0)).toFixed(1);
+      const lbl = `<text x="${lx}" y="${-MARKER_H - 2}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">P${mi + 1}</text>`;
+      return line + lbl;
     }).join("");
 
     const axisLine = `<line x1="0" y1="${VH}" x2="${W}" y2="${VH}" stroke="#e5e7eb" stroke-width="0.5"/>`;
-    const TOTAL_H = VH + AH + MARKER_H + 14;
-    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" style="display:block;overflow:visible">
-      <g transform="translate(0,${MARKER_H + 14})">${axisLine}${bars}${dateLabels}${markerSvg}</g>
+    const TOTAL_H = VH + AH + MARKER_H + 8;
+    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" style="display:block;overflow:visible;max-height:88px">
+      <g transform="translate(0,${MARKER_H + 8})">${axisLine}${bars}${dateLabels}${markerSvg}</g>
     </svg>`;
   }
 
@@ -1251,19 +1282,13 @@ function renderPatchTab() {
     const issueAll = kwCounts(gamePosts, dayKeys[0], dayKeys[6], ISSUE_KWS);
     const isAlert  = Object.keys(issueAll).length > 0;
 
-    // 패치별 텍스트 요약
+    // 패치별 유저 반응 요약
     const patchSummaries = markers.map((m, mi) => {
-      const txt = patchSummaryText(gamePosts, m.patch, dayKeys);
-      return txt
-        ? `<div class="patch-summary-row">
+      const txt = patchReactionText(gamePosts, m.patch, dayKeys);
+      return `<div class="patch-summary-row">
             <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
-            <span class="patch-summary-title">${escapeHtml(m.patch.title)}</span>
-            <span class="patch-summary-body">${escapeHtml(txt)}</span>
-           </div>`
-        : `<div class="patch-summary-row">
-            <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
-            <span class="patch-summary-title">${escapeHtml(m.patch.title)}</span>
-            <span class="patch-summary-body patch-summary-muted">게시물 데이터 부족 (수집 후 확인 가능)</span>
+            <span class="patch-summary-title"><a href="${escapeHtml(m.patch.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${escapeHtml(m.patch.title)}</a></span>
+            <span class="patch-summary-body${txt ? "" : " patch-summary-muted"}">${escapeHtml(txt || "게시물 데이터 부족 — 수집 후 확인 가능")}</span>
            </div>`;
     }).join("");
 
