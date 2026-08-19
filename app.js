@@ -1189,124 +1189,124 @@ function renderPatchTab() {
     return sentences.join(" ");
   }
 
-  // SVG: 컴팩트 바 차트 + 패치 마커
+  // SVG: 고정 높이 바 차트 + 패치 마커 (축 아래 점선)
   function buildWeekSvg(dayKeys, counts, markers, color) {
-    const W = 300, VH = 48, AH = 14, MARKER_H = 12;
-    const n = dayKeys.length, gap = 4;
+    const W = 280, VH = 44, AH = 13;
+    const n = dayKeys.length, gap = 3;
     const bw = (W - gap * (n - 1)) / n;
     const max = Math.max(...counts, 1);
-
-    // 마커가 있는 막대는 숫자를 바 안에 표시 (겹침 방지)
     const markedIdxs = new Set(markers.map((m) => m.dayIdx));
 
     const bars = counts.map((v, i) => {
-      const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VH));
+      const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * VH));
       const x  = (i * (bw + gap)).toFixed(2);
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isMarked = markedIdxs.has(i);
       const fill = isMarked ? color : "#9ca3af";
       const op   = isMarked ? "0.85" : "0.28";
       const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="1.5" opacity="${op}"/>`;
-      // 마커가 있는 막대는 숫자를 막대 안(하단)에 흰색으로 — 겹침 없음
+      // 숫자: 패치 막대면 안에(흰색), 아니면 위
       let num = "";
       if (v > 0) {
-        if (isMarked && bh > 14) {
-          num = `<text x="${cx}" y="${VH - 4}" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="700">${v}</text>`;
+        if (isMarked && bh > 12) {
+          num = `<text x="${cx}" y="${VH - 3}" text-anchor="middle" font-size="7" fill="#fff" font-weight="700">${v}</text>`;
         } else if (!isMarked) {
-          num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="7" fill="${fill}" opacity="${op}" font-weight="600">${v}</text>`;
+          num = `<text x="${cx}" y="${VH - bh - 2}" text-anchor="middle" font-size="6.5" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
         }
       }
       return r + num;
     }).join("");
 
+    const axisLine = `<line x1="0" y1="${VH}" x2="${W}" y2="${VH}" stroke="#e5e7eb" stroke-width="0.5"/>`;
+
     const dateLabels = dayKeys.map((key, i) => {
       const [, mm, dd] = key.split("-");
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isToday = key === todayKst;
-      return `<text x="${cx}" y="${VH + 11}" text-anchor="middle" font-size="7.5" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
+      return `<text x="${cx}" y="${VH + AH - 1}" text-anchor="middle" font-size="7" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
     }).join("");
 
-    // 마커: 막대 위 세로선 + P번호 (겹치면 좌우로 오프셋)
-    const markerSvg = markers.map((m, mi) => {
-      const baseCx = m.dayIdx * (bw + gap) + bw / 2;
-      const cx = baseCx.toFixed(1);
-      // 세로 점선
-      const line = `<line x1="${cx}" y1="${-MARKER_H}" x2="${cx}" y2="0" stroke="${color}" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.6"/>`;
-      // P번호 — 짝수/홀수로 좌우 배치해서 겹침 방지
-      const lx = markers.length > 1 && mi % 2 === 1 ? (baseCx + 10).toFixed(1) : (baseCx - (markers.length > 1 ? 10 : 0)).toFixed(1);
-      const lbl = `<text x="${lx}" y="${-MARKER_H - 2}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">P${mi + 1}</text>`;
-      return line + lbl;
+    // 패치 마커: 축 아래 짧은 눈금 + P번호 (날짜 레이블과 같은 줄 아래)
+    const markerLines = markers.map((m, mi) => {
+      const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
+      // 세로 점선 (막대 전체)
+      const dash = `<line x1="${cx}" y1="0" x2="${cx}" y2="${VH}" stroke="${color}" stroke-width="1" stroke-dasharray="3,2" opacity="0.35"/>`;
+      return dash;
     }).join("");
 
-    const axisLine = `<line x1="0" y1="${VH}" x2="${W}" y2="${VH}" stroke="#e5e7eb" stroke-width="0.5"/>`;
-    const TOTAL_H = VH + AH + MARKER_H + 8;
-    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" style="display:block;overflow:visible;max-height:88px">
-      <g transform="translate(0,${MARKER_H + 8})">${axisLine}${bars}${dateLabels}${markerSvg}</g>
+    // P레이블을 날짜 레이블과 함께 축 아래에 배치 (겹침 원천 차단)
+    const pLabels = markers.map((m, mi) => {
+      const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
+      return `<text x="${cx}" y="${VH + AH + 8}" text-anchor="middle" font-size="7" fill="${color}" font-weight="700">P${mi + 1}</text>`;
+    }).join("");
+
+    const TOTAL_H = VH + AH + (markers.length ? 10 : 0);
+    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="72" style="display:block">
+      ${axisLine}${markerLines}${bars}${dateLabels}${pLabels}
     </svg>`;
   }
+
+  // 이번주 7일 고정 (6일 전 ~ 오늘, KST)
+  const dayKeys = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() + 9 * 3600000 - (6 - i) * 86400000);
+    return d.toISOString().slice(0, 10);
+  });
+  const weekStart = dayKeys[0], weekEnd = dayKeys[6];
 
   const gameHtmlParts = GAME_LIST.map((game) => {
     const color = GAME_COLORS[game];
     const gamePosts = posts.filter((p) => p.game === game);
     const gamePatches = allPatchData.filter((p) => p.game === game).sort((a, b) => b.date.localeCompare(a.date));
 
-    // 날짜 윈도우: 가장 최근 패치 D-3 ~ D+3, 패치 없으면 최근 7일
-    let dayKeys;
-    if (gamePatches.length) {
-      const anchor = gamePatches[0].date;
-      dayKeys = Array.from({ length: 7 }, (_, i) => addDays(anchor, i - 3));
-    } else {
-      dayKeys = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(Date.now() + 9 * 3600000 - (6 - i) * 86400000);
-        return d.toISOString().slice(0, 10);
-      });
-    }
-
     const counts = countByKeys(gamePosts, dayKeys);
-    const windowTotal = counts.reduce((a, b) => a + b, 0);
+    const weekTotal = counts.reduce((a, b) => a + b, 0);
 
-    // 윈도우 내 패치 마커
+    // 이번주 창 안에 있는 패치만 마커
     const markers = gamePatches
       .map((patch) => ({ patch, dayIdx: dayKeys.indexOf(patch.date) }))
       .filter((m) => m.dayIdx >= 0);
 
-    // 전주 동일 기간 비교
+    // 전주 비교
     const prevKeys = dayKeys.map((k) => addDays(k, -7));
     const prevTotal = countByKeys(gamePosts, prevKeys).reduce((a, b) => a + b, 0);
-    const pct = prevTotal > 0 ? Math.round(((windowTotal - prevTotal) / prevTotal) * 100) : null;
+    const pct = prevTotal > 0 ? Math.round(((weekTotal - prevTotal) / prevTotal) * 100) : null;
     const pctTxt = pct !== null
       ? `<span class="patch-ins-item ${pct > 10 ? "patch-ins-up" : pct < -10 ? "patch-ins-down" : "patch-ins-flat"}">${pct > 0 ? "+" : ""}${pct}% vs 전주</span>`
       : "";
 
-    // 전체 이슈 키워드 (윈도우 전체)
-    const issueAll = kwCounts(gamePosts, dayKeys[0], dayKeys[6], ISSUE_KWS);
+    // 이번주 이슈 키워드 여부
+    const issueAll = kwCounts(gamePosts, weekStart, weekEnd, ISSUE_KWS);
     const isAlert  = Object.keys(issueAll).length > 0;
 
-    // 패치별 유저 반응 요약
+    // 패치별 유저 반응 요약 (이번주 내 패치만)
     const patchSummaries = markers.map((m, mi) => {
       const txt = patchReactionText(gamePosts, m.patch, dayKeys);
       return `<div class="patch-summary-row">
-            <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
-            <span class="patch-summary-title"><a href="${escapeHtml(m.patch.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${escapeHtml(m.patch.title)}</a></span>
-            <span class="patch-summary-body${txt ? "" : " patch-summary-muted"}">${escapeHtml(txt || "게시물 데이터 부족 — 수집 후 확인 가능")}</span>
-           </div>`;
+        <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
+        <span class="patch-summary-title"><a href="${escapeHtml(m.patch.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${escapeHtml(m.patch.title)}</a></span>
+        <span class="patch-summary-body${txt ? "" : " patch-summary-muted"}">${escapeHtml(txt || "아직 게시물 데이터 부족 — 수집 후 확인 가능")}</span>
+      </div>`;
     }).join("");
 
-    const noPatchNote = !gamePatches.length
-      ? `<p class="patch-no-marker">공지 데이터 없음 — GitHub Actions 실행 후 자동 수집</p>`
-      : markers.length === 0
-      ? `<p class="patch-no-marker">윈도우 내 패치 없음 (최근 패치: ${gamePatches[0].date})</p>`
+    // 이번주 패치 없을 때 안내
+    const recentPatch = gamePatches[0];
+    const noPatchNote = !markers.length
+      ? `<p class="patch-no-marker">${
+          !gamePatches.length
+            ? "공지 데이터 없음 — GitHub Actions 실행 후 자동 수집"
+            : `이번주 패치 없음 · 최근 패치: ${recentPatch.date} ${escapeHtml(recentPatch.title)}`
+        }</p>`
       : "";
 
     return `
       <div class="patch-game-card${isAlert ? " patch-game-card-alert" : ""}">
         <div class="patch-game-card-head">
-          <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
             <span class="patch-game-dot" style="background:${color}"></span>
             <strong class="patch-game-name">${escapeHtml(game)}</strong>
-            <span class="patch-week-total">${windowTotal}건 / ${dayKeys[0].slice(5)} ~ ${dayKeys[6].slice(5)}</span>
+            <span class="patch-week-total">${weekTotal}건</span>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0">
             ${pctTxt}
             ${isAlert ? `<span class="patch-badge patch-badge-alert">이슈 키워드</span>` : `<span class="patch-badge patch-badge-normal">정상</span>`}
           </div>
