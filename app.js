@@ -1191,27 +1191,26 @@ function renderPatchTab() {
 
   // SVG: 고정 높이 바 차트 + 패치 마커 (축 아래 점선)
   function buildWeekSvg(dayKeys, counts, markers, color) {
-    const W = 280, VH = 44, AH = 13;
-    const n = dayKeys.length, gap = 3;
+    const W = 280, VH = 58, AH = 16;
+    const n = dayKeys.length, gap = 4;
     const bw = (W - gap * (n - 1)) / n;
     const max = Math.max(...counts, 1);
     const markedIdxs = new Set(markers.map((m) => m.dayIdx));
 
     const bars = counts.map((v, i) => {
-      const bh = Math.max(v > 0 ? 2 : 0, Math.round((v / max) * VH));
+      const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VH));
       const x  = (i * (bw + gap)).toFixed(2);
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isMarked = markedIdxs.has(i);
       const fill = isMarked ? color : "#9ca3af";
       const op   = isMarked ? "0.85" : "0.28";
-      const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="1.5" opacity="${op}"/>`;
-      // 숫자: 패치 막대면 안에(흰색), 아니면 위
+      const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="2" opacity="${op}"/>`;
       let num = "";
       if (v > 0) {
-        if (isMarked && bh > 12) {
-          num = `<text x="${cx}" y="${VH - 3}" text-anchor="middle" font-size="7" fill="#fff" font-weight="700">${v}</text>`;
+        if (isMarked && bh > 14) {
+          num = `<text x="${cx}" y="${VH - 4}" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="700">${v}</text>`;
         } else if (!isMarked) {
-          num = `<text x="${cx}" y="${VH - bh - 2}" text-anchor="middle" font-size="6.5" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
+          num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
         }
       }
       return r + num;
@@ -1223,25 +1222,21 @@ function renderPatchTab() {
       const [, mm, dd] = key.split("-");
       const cx = (i * (bw + gap) + bw / 2).toFixed(1);
       const isToday = key === todayKst;
-      return `<text x="${cx}" y="${VH + AH - 1}" text-anchor="middle" font-size="7" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
+      return `<text x="${cx}" y="${VH + AH - 2}" text-anchor="middle" font-size="8.5" fill="${isToday ? color : "#9ca3af"}" font-weight="${isToday ? "700" : "400"}">${Number(mm)}/${Number(dd)}</text>`;
     }).join("");
 
-    // 패치 마커: 축 아래 짧은 눈금 + P번호 (날짜 레이블과 같은 줄 아래)
-    const markerLines = markers.map((m, mi) => {
+    const markerLines = markers.map((m) => {
       const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
-      // 세로 점선 (막대 전체)
-      const dash = `<line x1="${cx}" y1="0" x2="${cx}" y2="${VH}" stroke="${color}" stroke-width="1" stroke-dasharray="3,2" opacity="0.35"/>`;
-      return dash;
+      return `<line x1="${cx}" y1="0" x2="${cx}" y2="${VH}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.3"/>`;
     }).join("");
 
-    // P레이블을 날짜 레이블과 함께 축 아래에 배치 (겹침 원천 차단)
     const pLabels = markers.map((m, mi) => {
       const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
-      return `<text x="${cx}" y="${VH + AH + 8}" text-anchor="middle" font-size="7" fill="${color}" font-weight="700">P${mi + 1}</text>`;
+      return `<text x="${cx}" y="${VH + AH + 9}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">P${mi + 1}</text>`;
     }).join("");
 
-    const TOTAL_H = VH + AH + (markers.length ? 10 : 0);
-    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="72" style="display:block">
+    const TOTAL_H = VH + AH + (markers.length ? 12 : 0);
+    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="92" style="display:block">
       ${axisLine}${markerLines}${bars}${dateLabels}${pLabels}
     </svg>`;
   }
