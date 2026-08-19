@@ -1100,6 +1100,11 @@ function renderPatchTab() {
 
   const ISSUE_KWS = ["버그", "오류", "에러", "먹통", "튕김", "튕", "접속", "환불", "문제", "불가", "안됨", "안돼", "오작동", "이슈", "먹힘"];
   const POS_KWS   = ["감사", "좋아", "최고", "기대", "개선", "추가", "이벤트", "혜택", "만족"];
+  const ISSUE_CATS = [
+    { label: "서버/접속", kws: ["접속", "먹통", "튕김", "튕"] },
+    { label: "오류/버그",  kws: ["버그", "오류", "에러", "오작동", "이슈", "먹힘"] },
+    { label: "불만/환불",  kws: ["환불", "문제", "불가", "안됨", "안돼"] },
+  ];
   const allPatchData = state.patches?.patches || [];
   const posts = allPosts();
   const GAME_LIST = Object.keys(GAME_COLORS);
@@ -1139,54 +1144,55 @@ function renderPatchTab() {
     return found;
   }
 
-  // 패치 유저 반응 요약 (자연어)
-  function patchReactionText(gamePosts, patch, dayKeys) {
+  // 패치 유저 반응 요약 — {text, cats, issuePct, issueTotal} 반환
+  function patchReactionText(gamePosts, patch, dayKeys, prevPatch) {
     const pidx = dayKeys.indexOf(patch.date);
     if (pidx < 0) return null;
 
-    const beforeKeys = dayKeys.slice(0, pidx);
-    const afterKeys  = dayKeys.slice(pidx + 1);
-    const patchCount = countByKeys(gamePosts, [patch.date])[0];
-    const beforeAvg  = beforeKeys.length ? countByKeys(gamePosts, beforeKeys).reduce((a, b) => a + b, 0) / beforeKeys.length : 0;
-    const afterCounts = countByKeys(gamePosts, afterKeys);
-    const afterAvg   = afterKeys.length ? afterCounts.reduce((a, b) => a + b, 0) / afterKeys.length : 0;
+    const beforeKeys  = dayKeys.slice(0, pidx);
+    const afterKeys   = dayKeys.slice(pidx + 1);
+    const patchCount  = countByKeys(gamePosts, [patch.date])[0];
+    const beforeAvg   = beforeKeys.length ? countByKeys(gamePosts, beforeKeys).reduce((a, b) => a + b, 0) / beforeKeys.length : 0;
+    const afterAvg    = afterKeys.length  ? countByKeys(gamePosts, afterKeys).reduce((a, b) => a + b, 0)  / afterKeys.length  : 0;
 
-    // 패치 이후 D+1~D+2 게시물만 보고 이슈/긍정 판단
-    const afterFrom = addDays(patch.date, 1);
-    const afterTo   = addDays(patch.date, 2);
-    const issueKw = kwCounts(gamePosts, afterFrom, afterTo, ISSUE_KWS);
-    const posKw   = kwCounts(gamePosts, afterFrom, afterTo, POS_KWS);
-    const issueTop = Object.entries(issueKw).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
-    const posTop   = Object.entries(posKw).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
+    if (patchCount === 0 && afterAvg === 0) return null;
+
+    const afterFrom  = addDays(patch.date, 1);
+    const afterTo    = addDays(patch.date, 2);
+    const issueKw    = kwCounts(gamePosts, afterFrom, afterTo, ISSUE_KWS);
+    const posKw      = kwCounts(gamePosts, afterFrom, afterTo, POS_KWS);
+    const issueTotal = Object.values(issueKw).reduce((a, b) => a + b, 0);
+    const issueTop   = Object.entries(issueKw).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
+    const posTop     = Object.entries(posKw).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
 
     const sentences = [];
 
-    // 볼륨 변화 해석
-    if (patchCount > 0 && beforeAvg > 0) {
+    // 볼륨 변화
+    if (beforeAvg > 0) {
       const pct = Math.round(((afterAvg - beforeAvg) / beforeAvg) * 100);
-      if (pct > 30) sentences.push(`패치 이후 커뮤니티 반응이 평소 대비 활발하게 증가했습니다.`);
-      else if (pct < -30) sentences.push(`패치 이후 유저 게시물이 눈에 띄게 줄었습니다.`);
-      else sentences.push(`패치 전후 유저 게시물량은 비슷한 수준을 유지했습니다.`);
-    } else if (patchCount === 0 && afterAvg === 0) {
-      return null; // 데이터 없음
+      if (pct > 30) sentences.push("패치 이후 반응이 평소 대비 활발합니다.");
+      else if (pct < -30) sentences.push("패치 이후 유저 게시물이 줄었습니다.");
+      else sentences.push("패치 전후 게시물량은 비슷합니다.");
     }
 
-    // 이슈 해석
-    if (issueTop.length >= 2) {
-      sentences.push(`패치 직후 '${issueTop[0]}', '${issueTop[1]}' 등 불만/이슈성 게시물이 확인됩니다.`);
-    } else if (issueTop.length === 1) {
-      sentences.push(`'${issueTop[0]}' 관련 이슈 언급이 일부 있었습니다.`);
+    // 이슈/긍정 키워드
+    if (issueTop.length >= 2) sentences.push(`직후 '${issueTop[0]}', '${issueTop[1]}' 등 이슈 게시물 감지.`);
+    else if (issueTop.length === 1) sentences.push(`'${issueTop[0]}' 관련 이슈 언급 일부.`);
+    if (posTop.length >= 1 && !issueTop.length) sentences.push(`'${posTop.join("', '")}' 등 긍정 키워드가 주를 이뤘습니다.`);
+    else if (posTop.length >= 1) sentences.push(`'${posTop.join("', '")}' 긍정 반응도 있었습니다.`);
+
+    // 이전 패치 대비 이슈 비교
+    let issuePct = null;
+    if (prevPatch) {
+      const pf = addDays(prevPatch.date, 1), pt = addDays(prevPatch.date, 2);
+      const prevTotal = Object.values(kwCounts(gamePosts, pf, pt, ISSUE_KWS)).reduce((a, b) => a + b, 0);
+      if (prevTotal > 0) issuePct = Math.round(((issueTotal - prevTotal) / prevTotal) * 100);
     }
 
-    // 긍정 해석
-    if (posTop.length >= 1 && !issueTop.length) {
-      sentences.push(`'${posTop.join("', '")}' 등 긍정적 키워드 게시물이 주를 이뤘습니다.`);
-    } else if (posTop.length >= 1) {
-      sentences.push(`'${posTop.join("', '")}' 관련 긍정 반응도 함께 나타났습니다.`);
-    }
+    // 이슈 카테고리
+    const hitCats = ISSUE_CATS.filter((cat) => cat.kws.some((kw) => issueKw[kw])).map((cat) => cat.label);
 
-    if (!sentences.length) return null;
-    return sentences.join(" ");
+    return { text: sentences.join(" ") || null, cats: hitCats, issuePct, issueTotal };
   }
 
   // SVG: 고정 높이 바 차트 + 패치 마커 (축 아래 점선)
@@ -1230,17 +1236,27 @@ function renderPatchTab() {
       return `<line x1="${cx}" y1="0" x2="${cx}" y2="${VH}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.3"/>`;
     }).join("");
 
-    // P-label: 짝수/홀수 마커 y 위치 엇갈려 겹침 방지
-    const P_BASE = VH + AH + 9;
-    const pLabels = markers.map((m, mi) => {
+    // 패치 타입 라벨: 마커 라인 위에 세로 텍스트
+    function patchTypeLabel(title) {
+      if (/정기\s*점검/.test(title)) return "정기점검";
+      if (/임시\s*점검/.test(title)) return "임시점검";
+      if (/서버\s*패치/.test(title)) return "서버패치";
+      if (/데이터\s*패치/.test(title)) return "데이터패치";
+      if (/업데이트/.test(title)) return "업데이트";
+      if (/패치/.test(title)) return "패치";
+      if (/점검/.test(title)) return "점검";
+      return "패치";
+    }
+
+    const pLabels = markers.map((m) => {
       const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
-      const y = P_BASE + (mi % 2 === 0 ? 0 : 11);
-      return `<text x="${cx}" y="${y}" text-anchor="middle" font-size="8.5" fill="${color}" font-weight="700">P${mi + 1}</text>`;
+      const label = patchTypeLabel(m.patch.title);
+      const midY  = (VH / 2).toFixed(0);
+      return `<text transform="translate(${cx},${midY}) rotate(-90)" text-anchor="middle" font-size="7.5" fill="${color}" font-weight="600" opacity="0.9">${label}</text>`;
     }).join("");
 
-    const pExtra = markers.length > 1 ? 22 : (markers.length === 1 ? 12 : 0);
-    const TOTAL_H = VH + AH + pExtra;
-    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="120" style="display:block">
+    const TOTAL_H = VH + AH;
+    return `<svg viewBox="0 0 ${W} ${TOTAL_H}" width="100%" height="120" style="display:block;overflow:visible">
       ${axisLine}${markerLines}${bars}${dateLabels}${pLabels}
     </svg>`;
   }
@@ -1279,11 +1295,33 @@ function renderPatchTab() {
 
     // 패치별 유저 반응 요약 (이번주 내 패치만)
     const patchSummaries = markers.map((m, mi) => {
-      const txt = patchReactionText(gamePosts, m.patch, dayKeys);
+      const patchIdx  = gamePatches.indexOf(m.patch);
+      const prevPatch = gamePatches[patchIdx + 1] || null;
+      const result    = patchReactionText(gamePosts, m.patch, dayKeys, prevPatch);
+      const txt        = result?.text;
+      const cats       = result?.cats || [];
+      const issuePct   = result?.issuePct ?? null;
+      const issueTotal = result?.issueTotal ?? 0;
+
+      const isIssue = issueTotal >= 3;
+      const statusDot = `<span class="patch-status-dot ${isIssue ? "patch-status-alert" : "patch-status-ok"}"></span>`;
+
+      const catChips = cats.length
+        ? `<span class="patch-cats">${cats.map((c) => `<span class="patch-cat-chip">${escapeHtml(c)}</span>`).join("")}</span>`
+        : "";
+
+      const cmpTag = issuePct !== null
+        ? `<span class="patch-issue-cmp ${issuePct > 20 ? "patch-cmp-up" : issuePct < -20 ? "patch-cmp-down" : "patch-cmp-flat"}">지난 패치 대비 이슈 ${issuePct > 0 ? "+" : ""}${issuePct}%</span>`
+        : "";
+
+      const bodyHtml = txt
+        ? escapeHtml(txt) + (cmpTag ? ` ${cmpTag}` : "") + (catChips ? `<br>${catChips}` : "")
+        : `<span class="patch-summary-muted">아직 게시물 데이터 부족 — 수집 후 확인 가능</span>`;
+
       return `<div class="patch-summary-row">
-        <span class="patch-summary-label" style="color:${color}">P${mi + 1}</span>
+        <span class="patch-summary-label" style="color:${color}">${statusDot}${m.patch.date.slice(5).replace("-", "/")}</span>
         <span class="patch-summary-title"><a href="${escapeHtml(m.patch.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${escapeHtml(m.patch.title)}</a></span>
-        <span class="patch-summary-body${txt ? "" : " patch-summary-muted"}">${escapeHtml(txt || "아직 게시물 데이터 부족 — 수집 후 확인 가능")}</span>
+        <span class="patch-summary-body">${bodyHtml}</span>
       </div>`;
     }).join("");
 
