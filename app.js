@@ -1203,6 +1203,7 @@ function renderPatchTab() {
     const max = Math.max(...counts, 1);
     const markedIdxs = new Set(markers.map((m) => m.dayIdx));
 
+    const markerBhMap = new Map();
     const bars = counts.map((v, i) => {
       const bh = Math.max(v > 0 ? 3 : 0, Math.round((v / max) * VH));
       const x  = (i * (bw + gap)).toFixed(2);
@@ -1210,14 +1211,11 @@ function renderPatchTab() {
       const isMarked = markedIdxs.has(i);
       const fill = isMarked ? color : "#9ca3af";
       const op   = isMarked ? "0.85" : "0.28";
+      if (isMarked) markerBhMap.set(i, bh);
       const r = `<rect x="${x}" y="${VH - bh}" width="${bw.toFixed(2)}" height="${bh}" fill="${fill}" rx="2" opacity="${op}"/>`;
       let num = "";
-      if (v > 0) {
-        if (isMarked && bh > 16) {
-          num = `<text x="${cx}" y="${VH - 5}" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">${v}</text>`;
-        } else if (!isMarked) {
-          num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8.5" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
-        }
+      if (v > 0 && !isMarked) {
+        num = `<text x="${cx}" y="${VH - bh - 3}" text-anchor="middle" font-size="8.5" fill="${fill}" opacity="0.7" font-weight="600">${v}</text>`;
       }
       return r + num;
     }).join("");
@@ -1249,10 +1247,21 @@ function renderPatchTab() {
     }
 
     const pLabels = markers.map((m) => {
-      const cx = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
+      const cx  = (m.dayIdx * (bw + gap) + bw / 2).toFixed(1);
+      const bh  = markerBhMap.get(m.dayIdx) || 0;
       const label = patchTypeLabel(m.patch.title);
-      const midY  = (VH / 2).toFixed(0);
-      return `<text transform="translate(${cx},${midY}) rotate(-90)" text-anchor="middle" font-size="7.5" fill="${color}" font-weight="600" opacity="0.9">${label}</text>`;
+      const v   = counts[m.dayIdx];
+      if (bh > 22) {
+        // 막대 안에 흰 글씨: 카운트 + 타입 2줄
+        const ly = (VH - bh + bh / 2).toFixed(0);
+        return `<text x="${cx}" y="${Number(ly) - 5}" text-anchor="middle" font-size="8" fill="#fff" font-weight="700">${v}</text>`
+             + `<text x="${cx}" y="${Number(ly) + 6}" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="600" opacity="0.9">${label}</text>`;
+      } else {
+        // 막대 위에 게임 색
+        const ty = Math.max(9, VH - bh - 14);
+        return `<text x="${cx}" y="${ty}" text-anchor="middle" font-size="7.5" fill="${color}" font-weight="700">${label}</text>`
+             + (v > 0 ? `<text x="${cx}" y="${Math.max(18, VH - bh - 4)}" text-anchor="middle" font-size="8" fill="${color}" font-weight="600">${v}</text>` : "");
+      }
     }).join("");
 
     const TOTAL_H = VH + AH;
