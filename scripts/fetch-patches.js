@@ -87,6 +87,7 @@ async function fetchFloorPatches(source) {
     for (const [, attrs, body] of html.matchAll(itemRegex)) {
       const href = attrs.match(/\bhref=["']([^"']+)["']/i)?.[1] || "";
       if (!/\/[a-z]{2}\/bbs[^/]*\/detail\/\d+/.test(href)) continue;
+      if (/\ball-link\b/.test(attrs)) continue; // 상단 고정 공지 스킵
       const title = cleanText(body.match(/<div[^>]*class="[^"]*noti-tit[^"]*"[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i)?.[1] || body);
       if (!title || title.length < 2) continue;
       if (!PATCH_KEYWORDS.some((k) => title.includes(k))) continue;
