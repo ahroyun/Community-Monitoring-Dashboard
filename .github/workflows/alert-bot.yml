@@ -1,0 +1,35 @@
+name: Alert Bot
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # 15분마다
+  workflow_dispatch:           # 수동 실행
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run alert bot
+        run: node scripts/alert-bot.js
+        env:
+          LINE_CHANNEL_TOKEN: ${{ secrets.LINE_CHANNEL_TOKEN }}
+          LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
+
+      - name: Save seen list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add alert-seen.json
+          git diff --staged --quiet || git commit -m "chore: update alert-seen list [skip ci]"
+          git push
