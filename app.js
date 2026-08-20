@@ -1284,11 +1284,14 @@ function renderPatchTab() {
     } else {
       windowStart = addDays(todayKst, -6);
     }
-    // windowStart~오늘 날짜 배열 (최대 14일)
+    // 최대 13일 전까지만 (오늘 포함 최대 14일, 오늘이 항상 포함되도록 앞을 자름)
+    const maxStart = addDays(todayKst, -13);
+    if (windowStart < maxStart) windowStart = maxStart;
+    // windowStart~오늘 날짜 배열
     const dayKeys = [];
     { let d = new Date(windowStart + "T00:00:00+09:00");
       const end = new Date(todayKst + "T00:00:00+09:00");
-      while (d <= end && dayKeys.length < 14) {
+      while (d <= end) {
         dayKeys.push(d.toISOString().slice(0, 10));
         d.setUTCDate(d.getUTCDate() + 1);
       }
