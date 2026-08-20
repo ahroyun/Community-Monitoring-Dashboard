@@ -53,6 +53,19 @@ function formatNaverGameDate(value = "") {
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
 }
 
+// 제목에서 실제 점검/패치 날짜 추출 (공지 게시일보다 우선)
+function extractDateFromTitle(title, fetchedAt) {
+  const year = new Date(fetchedAt).getUTCFullYear();
+  let m;
+  // "8월 14일", "08월 06일" 형식
+  m = title.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (m) return `${year}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`;
+  // "8/20", "07/23" 형식
+  m = title.match(/(\d{1,2})\/(\d{1,2})/);
+  if (m) return `${year}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`;
+  return null;
+}
+
 // 상대시각(3일 전 등) → ISO 날짜
 function resolveDate(dateStr, fetchedAt) {
   if (!dateStr) return new Date(fetchedAt).toISOString().slice(0, 10);
@@ -92,7 +105,7 @@ async function fetchFloorPatches(source) {
       if (!PATCH_KEYWORDS.some((k) => title.includes(k))) continue;
       const rawDate = cleanText(body.match(/<p[^>]*class="[^"]*ago[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] || "");
       if (!rawDate) continue; // 날짜 없는 항목 = 상단 고정 공지 → 스킵
-      const date = resolveDate(rawDate, now);
+      const date = extractDateFromTitle(title, now) || resolveDate(rawDate, now);
       if (seen.has(href)) continue;
       seen.add(href);
       const fullUrl = new URL(href, source.url).href;
