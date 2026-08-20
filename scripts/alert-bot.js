@@ -108,7 +108,9 @@ const candidates = historyPosts.filter((p) =>
 // 4. 새 매칭 게시물 추출 → 알림
 let alertCount = 0;
 for (const post of candidates) {
-  if (seen[post.id]) continue; // 이미 알림 보낸 항목
+  const postKey = post.url || post.id || post.title;
+  if (!postKey) continue;
+  if (seen[postKey]) continue; // 이미 알림 보낸 항목
 
   const keywords = matchedKeywords(post.title);
   if (keywords.length === 0) continue;
@@ -117,7 +119,7 @@ for (const post of candidates) {
   console.log(`→ 알림 전송: ${post.title}`);
   await sendLineMessage(message);
 
-  seen[post.id] = Date.now();
+  seen[postKey] = Date.now();
   alertCount++;
 
   // 연속 알림 간격 (LINE API rate limit 방지)
