@@ -27,6 +27,14 @@ const PATCH_SOURCES = [
 // 패치/업데이트 게시글 식별 키워드
 const PATCH_KEYWORDS = ["점검", "패치", "업데이트"];
 
+// 제외 키워드: 제목에 포함되면 스킵
+const EXCLUDE_KEYWORDS = [
+  "연기", "취소", "연장", "지연",       // 점검 연기/취소
+  "미리보기", "예고", "사전 안내",       // 사전 예고 (실제 일정 아님)
+  "판매", "상품", "패키지",             // 판매 관련 공지
+  "[완료]", "[종료]", "[완료됨]", "[종료됨]", // 점검 완료 공지 (원본과 중복)
+];
+
 function decodeEntities(value = "") {
   return value
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
@@ -103,6 +111,7 @@ async function fetchFloorPatches(source) {
       const title = cleanText(body.match(/<div[^>]*class="[^"]*noti-tit[^"]*"[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i)?.[1] || body);
       if (!title || title.length < 2) continue;
       if (!PATCH_KEYWORDS.some((k) => title.includes(k))) continue;
+      if (EXCLUDE_KEYWORDS.some((k) => title.includes(k))) continue;
       const rawDate = cleanText(body.match(/<p[^>]*class="[^"]*ago[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] || "");
       if (!rawDate) continue; // 날짜 없는 항목 = 상단 고정 공지 → 스킵
       const date = extractDateFromTitle(title, now) || resolveDate(rawDate, now);
@@ -145,7 +154,7 @@ async function fetchNaverGamePatches(source) {
     return feeds
       .filter((item) => {
         const title = item.feed?.title || item.title || "";
-        return PATCH_KEYWORDS.some((k) => title.includes(k));
+        return PATCH_KEYWORDS.some((k) => title.includes(k)) && !EXCLUDE_KEYWORDS.some((k) => title.includes(k));
       })
       .map((item) => {
         const feed = item.feed || item;
