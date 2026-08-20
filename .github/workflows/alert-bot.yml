@@ -1,9 +1,10 @@
 name: Alert Bot
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'   # 10분마다
-  workflow_dispatch:           # 수동 실행
+  workflow_run:
+    workflows: ["Update community data"]
+    types: [completed]
+  workflow_dispatch:             # 수동 실행
 
 jobs:
   alert:
