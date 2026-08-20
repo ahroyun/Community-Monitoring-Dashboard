@@ -2,7 +2,7 @@ name: Alert Bot
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # 15분마다
+    - cron: '*/10 * * * *'   # 10분마다
   workflow_dispatch:           # 수동 실행
 
 jobs:
