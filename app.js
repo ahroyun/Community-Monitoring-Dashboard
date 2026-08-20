@@ -1270,27 +1270,40 @@ function renderPatchTab() {
     </svg>`;
   }
 
-  // 이번주 7일 고정 (6일 전 ~ 오늘, KST)
-  const dayKeys = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.now() + 9 * 3600000 - (6 - i) * 86400000);
-    return d.toISOString().slice(0, 10);
-  });
-  const weekStart = dayKeys[0], weekEnd = dayKeys[6];
-
   const gameHtmlParts = GAME_LIST.map((game) => {
     const color = GAME_COLORS[game];
     const gamePosts = posts.filter((p) => p.game === game);
     const gamePatches = allPatchData.filter((p) => p.game === game).sort((a, b) => b.date.localeCompare(a.date));
 
+    // 동적 윈도우: 최근 7일 안에 패치가 있으면 가장 이른 패치 D-5부터, 없으면 오늘 기준 7일
+    const recentPatches = gamePatches.filter((p) => p.date >= addDays(todayKst, -7) && p.date <= todayKst);
+    let windowStart;
+    if (recentPatches.length > 0) {
+      const earliestDate = recentPatches[recentPatches.length - 1].date; // 정렬이 최신순이므로 마지막 = 가장 오래된
+      windowStart = addDays(earliestDate, -5);
+    } else {
+      windowStart = addDays(todayKst, -6);
+    }
+    // windowStart~오늘 날짜 배열 (최대 14일)
+    const dayKeys = [];
+    { let d = new Date(windowStart + "T00:00:00+09:00");
+      const end = new Date(todayKst + "T00:00:00+09:00");
+      while (d <= end && dayKeys.length < 14) {
+        dayKeys.push(d.toISOString().slice(0, 10));
+        d.setUTCDate(d.getUTCDate() + 1);
+      }
+    }
+    const weekStart = dayKeys[0], weekEnd = dayKeys[dayKeys.length - 1];
+
     const counts = countByKeys(gamePosts, dayKeys);
     const weekTotal = counts.reduce((a, b) => a + b, 0);
 
-    // 이번주 창 안에 있는 패치만 마커
+    // 윈도우 안에 있는 패치만 마커
     const markers = gamePatches
       .map((patch) => ({ patch, dayIdx: dayKeys.indexOf(patch.date) }))
       .filter((m) => m.dayIdx >= 0);
 
-    // 전주 비교
+    // 전주 비교 (같은 길이 윈도우를 7일 앞으로)
     const prevKeys = dayKeys.map((k) => addDays(k, -7));
     const prevTotal = countByKeys(gamePosts, prevKeys).reduce((a, b) => a + b, 0);
     const pct = prevTotal > 0 ? Math.round(((weekTotal - prevTotal) / prevTotal) * 100) : null;
@@ -1298,7 +1311,7 @@ function renderPatchTab() {
       ? `<span class="patch-ins-item ${pct > 10 ? "patch-ins-up" : pct < -10 ? "patch-ins-down" : "patch-ins-flat"}">${pct > 0 ? "+" : ""}${pct}% vs 전주</span>`
       : "";
 
-    // 이번주 이슈 키워드 여부
+    // 윈도우 내 이슈 키워드 여부
     const issueAll = kwCounts(gamePosts, weekStart, weekEnd, ISSUE_KWS);
     const isAlert  = Object.keys(issueAll).length > 0;
 
