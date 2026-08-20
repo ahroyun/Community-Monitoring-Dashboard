@@ -1197,7 +1197,7 @@ function renderPatchTab() {
 
   // SVG: 고정 높이 바 차트 + 패치 마커 (축 아래 점선)
   function buildWeekSvg(dayKeys, counts, markers, color) {
-    const W = 340, VH = 78, AH = 18;
+    const W = 480, VH = 78, AH = 18;
     const n = dayKeys.length, gap = 4;
     const bw = (W - gap * (n - 1)) / n;
     const max = Math.max(...counts, 1);
@@ -1236,11 +1236,11 @@ function renderPatchTab() {
 
     // 패치 타입 라벨: 마커 라인 위에 세로 텍스트
     function patchTypeLabel(title) {
-      if (/정기\s*점검/.test(title)) return "정기점검";
-      if (/임시\s*점검/.test(title)) return "임시점검";
-      if (/서버\s*패치/.test(title)) return "서버패치";
-      if (/데이터\s*패치/.test(title)) return "데이터패치";
-      if (/업데이트/.test(title)) return "업데이트";
+      if (/정기\s*점검/.test(title)) return "정기";
+      if (/임시\s*점검/.test(title)) return "임시";
+      if (/서버\s*패치/.test(title)) return "서버";
+      if (/데이터\s*패치/.test(title)) return "패치";
+      if (/업데이트/.test(title)) return "업뎃";
       if (/패치/.test(title)) return "패치";
       if (/점검/.test(title)) return "점검";
       return "패치";
