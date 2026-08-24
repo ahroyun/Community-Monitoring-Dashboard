@@ -26,6 +26,7 @@ jobs:
         env:
           LINE_CHANNEL_TOKEN: ${{ secrets.LINE_CHANNEL_TOKEN }}
           LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
+          LINE_GROUP_ID_UNDECEMBER: ${{ secrets.LINE_GROUP_ID_UNDECEMBER }}
 
       - name: Save seen list
         run: |
