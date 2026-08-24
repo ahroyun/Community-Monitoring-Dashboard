@@ -1,10 +1,11 @@
 /**
  * alert-bot.js
- * 창세기전 모바일 커뮤니티 키워드 감지 → LINE 그룹 채팅 알림
+ * 게임별 커뮤니티 키워드 감지 → LINE 그룹 채팅 알림
  *
  * 필요한 GitHub Secrets:
- *   LINE_CHANNEL_TOKEN  : LINE Messaging API 채널 액세스 토큰
- *   LINE_GROUP_ID       : 알림을 보낼 그룹 채팅 ID
+ *   LINE_CHANNEL_TOKEN         : LINE Messaging API 채널 액세스 토큰
+ *   LINE_GROUP_ID              : 창세기전 모바일 그룹 ID
+ *   LINE_GROUP_ID_UNDECEMBER   : 언디셈버 그룹 ID
  */
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -13,18 +14,36 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// ── 설정 ────────────────────────────────────────────────
-const ALERT_KEYWORDS = ["기사단전", "총력전", "버그", "불가", "접속"];
-
-const TARGET_COMMUNITIES = [
-  "DC 창세기전 모바일",
-  "네이버 게임라운지 오류제보",
+// ── 게임별 알림 설정 ──────────────────────────────────────
+const GAME_CONFIGS = [
+  {
+    game: "창세기전 모바일",
+    label: "창세기전",
+    groupId: process.env.LINE_GROUP_ID,
+    communities: [
+      "DC 창세기전 모바일",
+      "네이버 게임라운지 오류제보",
+    ],
+    keywords: ["기사단전", "총력전", "버그", "불가", "접속"],
+  },
+  {
+    game: "언디셈버",
+    label: "언디셈버",
+    groupId: process.env.LINE_GROUP_ID_UNDECEMBER,
+    communities: [
+      "DC 언디셈버",
+      "FLOOR 자유게시판",
+    ],
+    keywords: [
+      "오류", "버그", "복사", "매크로", "핵", "작업장",
+      "점검", "백섭", "렉", "튕김", "접속", "환불", "경매장",
+    ],
+  },
 ];
 
 const LINE_CHANNEL_TOKEN = process.env.LINE_CHANNEL_TOKEN;
-const LINE_GROUP_ID      = process.env.LINE_GROUP_ID;
 
-// 최근 N시간 내 게시물만 알림 (너무 오래된 항목 무시)
+// 최근 N시간 내 게시물만 알림
 const LOOKBACK_HOURS = 2;
 
 // ── 경로 ────────────────────────────────────────────────
@@ -32,8 +51,8 @@ const historyPath = join(__dirname, "../history.json");
 const seenPath    = join(__dirname, "../alert-seen.json");
 
 // ── 유틸 ────────────────────────────────────────────────
-function matchedKeywords(title) {
-  return ALERT_KEYWORDS.filter((kw) => title.includes(kw));
+function matchedKeywords(title, keywords) {
+  return keywords.filter((kw) => title.includes(kw));
 }
 
 function isRecent(fetchedAt) {
@@ -42,9 +61,9 @@ function isRecent(fetchedAt) {
 }
 
 // ── LINE Push Message ────────────────────────────────────
-async function sendLineMessage(text) {
-  if (!LINE_CHANNEL_TOKEN || !LINE_GROUP_ID) {
-    console.warn("LINE_CHANNEL_TOKEN 또는 LINE_GROUP_ID 미설정 — 알림 스킵");
+async function sendLineMessage(groupId, text) {
+  if (!LINE_CHANNEL_TOKEN || !groupId) {
+    console.warn("LINE_CHANNEL_TOKEN 또는 groupId 미설정 — 알림 스킵");
     return;
   }
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -54,7 +73,7 @@ async function sendLineMessage(text) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      to: LINE_GROUP_ID,
+      to: groupId,
       messages: [{ type: "text", text }],
     }),
   });
@@ -64,13 +83,12 @@ async function sendLineMessage(text) {
   }
 }
 
-function buildMessage(post, keywords) {
+function buildMessage(label, post, keywords) {
   const kwtags = keywords.map((k) => `#${k}`).join(" ");
-  const source = post.community || "";
   return [
-    `[창세기전] 🔔 키워드 감지: ${kwtags}`,
+    `[${label}] 🔔 키워드 감지: ${kwtags}`,
     `📌 ${post.title}`,
-    `📂 ${source}`,
+    `📂 ${post.community || ""}`,
     `🔗 ${post.url}`,
   ].join("\n");
 }
@@ -86,7 +104,7 @@ try {
   process.exit(0);
 }
 
-// 2. seen 목록 로드 (알림 보낸 post ID + 정리용 timestamp)
+// 2. seen 목록 로드
 let seen = {};
 try {
   seen = JSON.parse(await readFile(seenPath, "utf-8"));
@@ -98,35 +116,45 @@ for (const id of Object.keys(seen)) {
   if (seen[id] < THREE_WEEKS_AGO) delete seen[id];
 }
 
-// 3. 대상 게시물 필터링 (게임 + 커뮤니티 + 키워드 + 최근성)
-const candidates = historyPosts.filter((p) =>
-  p.game === "창세기전 모바일" &&
-  TARGET_COMMUNITIES.includes(p.community) &&
-  isRecent(p.fetchedAt)
-);
+// 3. 게임별 처리
+let totalAlerts = 0;
 
-// 4. 새 매칭 게시물 추출 → 알림
-let alertCount = 0;
-for (const post of candidates) {
-  const postKey = post.url || post.id || post.title;
-  if (!postKey) continue;
-  if (seen[postKey]) continue; // 이미 알림 보낸 항목
+for (const config of GAME_CONFIGS) {
+  if (!config.groupId) {
+    console.log(`[${config.label}] groupId 미설정 — 스킵`);
+    continue;
+  }
 
-  const keywords = matchedKeywords(post.title);
-  if (keywords.length === 0) continue;
+  const candidates = historyPosts.filter((p) =>
+    p.game === config.game &&
+    config.communities.includes(p.community) &&
+    isRecent(p.fetchedAt)
+  );
 
-  const message = buildMessage(post, keywords);
-  console.log(`→ 알림 전송: ${post.title}`);
-  await sendLineMessage(message);
+  let gameAlerts = 0;
+  for (const post of candidates) {
+    const postKey = post.url || post.id || post.title;
+    if (!postKey) continue;
+    if (seen[postKey]) continue;
 
-  seen[postKey] = Date.now();
-  alertCount++;
+    const keywords = matchedKeywords(post.title, config.keywords);
+    if (keywords.length === 0) continue;
 
-  // 연속 알림 간격 (LINE API rate limit 방지)
-  await new Promise((r) => setTimeout(r, 300));
+    const message = buildMessage(config.label, post, keywords);
+    console.log(`→ [${config.label}] 알림 전송: ${post.title}`);
+    await sendLineMessage(config.groupId, message);
+
+    seen[postKey] = Date.now();
+    gameAlerts++;
+    totalAlerts++;
+
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  console.log(`[${config.label}] ${gameAlerts}건 전송, 후보 ${candidates.length}건 검사`);
 }
 
-console.log(`✓ 완료: ${alertCount}건 알림 전송, 후보 ${candidates.length}건 검사`);
+console.log(`✓ 완료: 총 ${totalAlerts}건 알림 전송`);
 
-// 5. seen 목록 저장
+// 4. seen 목록 저장
 await writeFile(seenPath, JSON.stringify(seen, null, 2));
