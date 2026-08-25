@@ -6,6 +6,10 @@
  *   LINE_CHANNEL_TOKEN         : LINE Messaging API 채널 액세스 토큰
  *   LINE_GROUP_ID              : 창세기전 모바일 그룹 ID
  *   LINE_GROUP_ID_UNDECEMBER   : 언디셈버 그룹 ID
+ *
+ * communities 설정:
+ *   keywords: [...] → 해당 키워드 포함 게시물만 알림
+ *   keywords: null  → 모든 게시물 알림
  */
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -21,22 +25,43 @@ const GAME_CONFIGS = [
     label: "창세기전",
     groupId: process.env.LINE_GROUP_ID,
     communities: [
-      "DC 창세기전 모바일",
-      "네이버 게임라운지 오류제보",
+      {
+        name: "네이버 게임라운지 자유",
+        keywords: [
+          "기사단전", "단전", "실험실", "총력전", "용자의 무덤", "용무",
+          "격투", "격전", "에러코드", "경쟁", "빙룡성", "스토리", "방주",
+          "이너월드", "서풍", "조각", "악세사리", "장신구", "파편", "아우터원",
+          "캐릭터", "툴팁", "밸런스",
+          "접속", "진행", "튕김", "크래시", "멈춤", "불가",
+          "안돼요", "안되요", "안됨", "안됩니다", "안되네요", "없어요",
+          "구매", "실행", "오류", "버그", "참가",
+        ],
+      },
+      {
+        name: "네이버 게임라운지 오류제보",
+        keywords: null, // 모든 게시물 알림
+      },
     ],
-    keywords: ["기사단전", "총력전", "버그", "불가", "접속"],
   },
   {
     game: "언디셈버",
     label: "언디셈버",
     groupId: process.env.LINE_GROUP_ID_UNDECEMBER,
     communities: [
-      "DC 언디셈버",
-      "FLOOR 자유게시판",
-    ],
-    keywords: [
-      "오류", "버그", "복사", "매크로", "핵", "작업장",
-      "점검", "백섭", "렉", "튕김", "접속", "환불", "경매장",
+      {
+        name: "DC 언디셈버",
+        keywords: [
+          "오류", "버그", "복사", "매크로", "핵", "작업장",
+          "점검", "백섭", "렉", "튕김", "접속", "환불", "경매장",
+        ],
+      },
+      {
+        name: "FLOOR 자유게시판",
+        keywords: [
+          "오류", "버그", "복사", "매크로", "핵", "작업장",
+          "점검", "백섭", "렉", "튕김", "접속", "환불", "경매장",
+        ],
+      },
     ],
   },
 ];
@@ -52,6 +77,7 @@ const seenPath    = join(__dirname, "../alert-seen.json");
 
 // ── 유틸 ────────────────────────────────────────────────
 function matchedKeywords(title, keywords) {
+  if (keywords === null) return ["전체"]; // 모든 게시물 알림
   return keywords.filter((kw) => title.includes(kw));
 }
 
@@ -84,9 +110,11 @@ async function sendLineMessage(groupId, text) {
 }
 
 function buildMessage(label, post, keywords) {
-  const kwtags = keywords.map((k) => `#${k}`).join(" ");
+  const kwtags = keywords[0] === "전체"
+    ? ""
+    : `\n🔑 ${keywords.map((k) => `#${k}`).join(" ")}`;
   return [
-    `[${label}] 🔔 키워드 감지: ${kwtags}`,
+    `[${label}] 🔔 새 게시물 감지${kwtags}`,
     `📌 ${post.title}`,
     `📂 ${post.community || ""}`,
     `🔗 ${post.url}`,
@@ -125,33 +153,38 @@ for (const config of GAME_CONFIGS) {
     continue;
   }
 
-  const candidates = historyPosts.filter((p) =>
-    p.game === config.game &&
-    config.communities.includes(p.community) &&
-    isRecent(p.fetchedAt)
-  );
-
   let gameAlerts = 0;
-  for (const post of candidates) {
-    const postKey = post.url || post.id || post.title;
-    if (!postKey) continue;
-    if (seen[postKey]) continue;
 
-    const keywords = matchedKeywords(post.title, config.keywords);
-    if (keywords.length === 0) continue;
+  for (const communityConfig of config.communities) {
+    const candidates = historyPosts.filter((p) =>
+      p.game === config.game &&
+      p.community === communityConfig.name &&
+      isRecent(p.fetchedAt)
+    );
 
-    const message = buildMessage(config.label, post, keywords);
-    console.log(`→ [${config.label}] 알림 전송: ${post.title}`);
-    await sendLineMessage(config.groupId, message);
+    for (const post of candidates) {
+      const postKey = post.url || post.id || post.title;
+      if (!postKey) continue;
+      if (seen[postKey]) continue;
 
-    seen[postKey] = Date.now();
-    gameAlerts++;
-    totalAlerts++;
+      const keywords = matchedKeywords(post.title, communityConfig.keywords);
+      if (keywords.length === 0) continue;
 
-    await new Promise((r) => setTimeout(r, 300));
+      const message = buildMessage(config.label, post, keywords);
+      console.log(`→ [${config.label}/${communityConfig.name}] ${post.title}`);
+      await sendLineMessage(config.groupId, message);
+
+      seen[postKey] = Date.now();
+      gameAlerts++;
+      totalAlerts++;
+
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    console.log(`[${config.label}/${communityConfig.name}] 후보 ${candidates.length}건 검사`);
   }
 
-  console.log(`[${config.label}] ${gameAlerts}건 전송, 후보 ${candidates.length}건 검사`);
+  console.log(`[${config.label}] ${gameAlerts}건 전송`);
 }
 
 console.log(`✓ 완료: 총 ${totalAlerts}건 알림 전송`);
