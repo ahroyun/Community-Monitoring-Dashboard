@@ -19,27 +19,39 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── 게임별 알림 설정 ──────────────────────────────────────
+const GM_KEYWORDS = [
+  "기사단전", "단전", "실험실", "총력전", "용자의 무덤", "용무",
+  "격투", "격전", "에러코드", "경쟁", "빙룡성", "스토리", "방주",
+  "이너월드", "서풍", "조각", "악세사리", "장신구", "파편", "아우터원",
+  "캐릭터", "툴팁", "밸런스",
+  "접속", "진행", "튕김", "크래시", "멈춤", "불가",
+  "안돼요", "안되요", "안됨", "안됩니다", "안되네요", "없어요",
+  "구매", "실행", "오류", "버그", "참가",
+];
+
 const GAME_CONFIGS = [
   {
     game: "창세기전 모바일",
-    label: "창세기전",
+    label: "GM",
     groupId: process.env.LINE_GROUP_ID,
     communities: [
       {
         name: "네이버 게임라운지 자유",
-        keywords: [
-          "기사단전", "단전", "실험실", "총력전", "용자의 무덤", "용무",
-          "격투", "격전", "에러코드", "경쟁", "빙룡성", "스토리", "방주",
-          "이너월드", "서풍", "조각", "악세사리", "장신구", "파편", "아우터원",
-          "캐릭터", "툴팁", "밸런스",
-          "접속", "진행", "튕김", "크래시", "멈춤", "불가",
-          "안돼요", "안되요", "안됨", "안됩니다", "안되네요", "없어요",
-          "구매", "실행", "오류", "버그", "참가",
-        ],
+        emoji: "🟡",
+        shortName: "자유/라운지",
+        keywords: GM_KEYWORDS,
       },
       {
         name: "네이버 게임라운지 오류제보",
-        keywords: null, // 모든 게시물 알림
+        emoji: "🔴",
+        shortName: "오류제보/라운지",
+        keywords: null,
+      },
+      {
+        name: "DC 창세기전 모바일",
+        emoji: "🔵",
+        shortName: "DC",
+        keywords: GM_KEYWORDS,
       },
     ],
   },
@@ -109,19 +121,35 @@ async function sendLineMessage(groupId, text) {
   }
 }
 
-function buildMessage(label, post, keywords) {
-  const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 3600000);
+function getTimestamp() {
+  const kst = new Date(Date.now() + 9 * 3600000);
   const mm = String(kst.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(kst.getUTCDate()).padStart(2, "0");
   const hh = String(kst.getUTCHours()).padStart(2, "0");
   const mi = String(kst.getUTCMinutes()).padStart(2, "0");
-  const timestamp = `${mm}/${dd} ${hh}:${mi}`;
+  return `${mm}/${dd} ${hh}:${mi}`;
+}
 
+function buildMessage(label, post, keywords, communityConfig) {
+  const timestamp = getTimestamp();
+
+  // 창세기전(GM)처럼 emoji/shortName이 있는 경우 전용 포맷
+  if (communityConfig?.emoji && communityConfig?.shortName) {
+    const kwtags = keywords[0] === "전체"
+      ? ""
+      : ` ${keywords.map((k) => `#${k}`).join(" ")}`;
+    return [
+      `[${label}] ${timestamp}`,
+      `${communityConfig.emoji} ${communityConfig.shortName}${kwtags}`,
+      `📌 ${post.title}`,
+      `${post.url}`,
+    ].join("\n");
+  }
+
+  // 기본 포맷 (언디셈버 등)
   const kwtags = keywords[0] === "전체"
     ? ""
     : ` [${keywords.map((k) => `#${k}`).join(" ")}]`;
-
   return [
     `[${label}] ${timestamp}`,
     `${post.community || ""}`,
@@ -180,7 +208,7 @@ for (const config of GAME_CONFIGS) {
       const keywords = matchedKeywords(post.title, communityConfig.keywords);
       if (keywords.length === 0) continue;
 
-      const message = buildMessage(config.label, post, keywords);
+      const message = buildMessage(config.label, post, keywords, communityConfig);
       console.log(`→ [${config.label}/${communityConfig.name}] ${post.title}`);
       await sendLineMessage(config.groupId, message);
 
