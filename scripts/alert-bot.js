@@ -57,11 +57,13 @@ const GAME_CONFIGS = [
   },
   {
     game: "언디셈버",
-    label: "언디셈버",
+    label: "UDG",
     groupId: process.env.LINE_GROUP_ID_UNDECEMBER,
     communities: [
       {
         name: "DC 언디셈버",
+        emoji: "🔵",
+        shortName: "DC",
         keywords: [
           "오류", "버그", "복사", "매크로", "핵", "작업장",
           "점검", "백섭", "렉", "튕김", "접속", "환불", "경매장",
@@ -69,6 +71,8 @@ const GAME_CONFIGS = [
       },
       {
         name: "FLOOR 자유게시판",
+        emoji: "🟡",
+        shortName: "자유/FLOOR",
         keywords: [
           "오류", "버그", "복사", "매크로", "핵", "작업장",
           "점검", "백섭", "렉", "튕김", "접속", "환불", "경매장",
