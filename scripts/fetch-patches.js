@@ -159,7 +159,8 @@ async function fetchNaverGamePatches(source) {
       .map((item) => {
         const feed = item.feed || item;
         const title = cleanText(feed.title || "");
-        const date = formatNaverGameDate(feed.createdDate || "");
+        const now = new Date().toISOString();
+        const date = extractDateFromTitle(title, now) || formatNaverGameDate(feed.createdDate || "");
         return {
           id: `naver_${source.loungeId}_${feed.feedId || feed.articleId}`,
           game: source.game,
