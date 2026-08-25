@@ -110,14 +110,24 @@ async function sendLineMessage(groupId, text) {
 }
 
 function buildMessage(label, post, keywords) {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 3600000);
+  const mm = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(kst.getUTCDate()).padStart(2, "0");
+  const hh = String(kst.getUTCHours()).padStart(2, "0");
+  const mi = String(kst.getUTCMinutes()).padStart(2, "0");
+  const timestamp = `${mm}/${dd} ${hh}:${mi}`;
+
   const kwtags = keywords[0] === "전체"
     ? ""
-    : `\n🔑 ${keywords.map((k) => `#${k}`).join(" ")}`;
+    : ` [${keywords.map((k) => `#${k}`).join(" ")}]`;
+
   return [
-    `[${label}] 🔔 새 게시물 감지${kwtags}`,
+    `[${label}] ${timestamp}`,
+    `${post.community || ""}`,
+    `🔔${kwtags}`,
     `📌 ${post.title}`,
-    `📂 ${post.community || ""}`,
-    `🔗 ${post.url}`,
+    `${post.url}`,
   ].join("\n");
 }
 
