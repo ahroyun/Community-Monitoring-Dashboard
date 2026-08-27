@@ -6,6 +6,10 @@ on:
     types: [completed]
   workflow_dispatch:             # 수동 실행
 
+concurrency:
+  group: alert-bot
+  cancel-in-progress: false
+
 jobs:
   alert:
     runs-on: ubuntu-latest
